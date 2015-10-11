@@ -35,7 +35,7 @@ ARCHITECTURE behavior OF tb_ALU IS
 	signal control_in : alu_operation_t := ALU_ADD;
 
 	--Outputs
-	signal result_out : std_logic_vector(DATA_WIDTH-1 downto 0);
+	signal result_out : std_logic_vector(DATA_WIDTH-1 downto 0) := x"00000000";
 	signal zero_out: std_logic;
 
 	-- Clock period definitions
@@ -44,7 +44,7 @@ ARCHITECTURE behavior OF tb_ALU IS
 	-- Testbench correct result
 	signal tb_correct_result : std_logic_vector(DATA_WIDTH-1 downto 0) := x"00000000";
 	
-	variable alu_operation_string : string := "";
+
 
 BEGIN
 
@@ -75,6 +75,7 @@ BEGIN
 
 		-- Procedure for asserting zero_out
 		procedure AssertZero is
+		begin
 				if tb_correct_result = std_logic_vector(to_unsigned(0,DATA_WIDTH)) then
 				assert zero_out = '0'
 					report "zero_out should be 1 when result_out is 0"
@@ -92,12 +93,27 @@ BEGIN
 			data_1 : integer;
 			data_2 : integer;
 			result : integer;
-			correct_result : integer) is
+			correct_result : integer;
+			alu_operation : alu_operation_t) is
+			variable alu_operation_string : string(0 to 2);
+			variable string_length : integer;
 		begin
+			case alu_operation is
+				when ALU_ADD =>
+					alu_operation_string := " + ";
+				when ALU_SUB =>
+					alu_operation_string := " - ";
+				when ALU_AND =>
+					alu_operation_string := "AND";
+				when ALU_OR =>
+					alu_operation_string := "OR ";
+				when ALU_SLT =>
+					alu_operation_string := "SLT";
+			end case;
 			assert result_out = tb_correct_result
 				report
 					integer'image(data_1) &
-					" " & alu_operation_string & " " &
+					" " & alu_operation_string(0 to 2) & " " &
 					integer'image(data_2) &
 					" should be: " & integer'image(correct_result) &
 					", was: " & integer'image(result)
@@ -110,9 +126,9 @@ BEGIN
 		procedure CheckResult(
 			data_1 : integer;
 			data_2 : integer;
-			alu_operation: alu_operation_t;
-			is_signed: boolean) is
+			alu_operation: alu_operation_t) is
 		begin
+			report "CheckResult";
 			-- Check signed values
 			data_1_in <= std_logic_vector(to_signed(data_1, DATA_WIDTH));
 			data_2_in <= std_logic_vector(to_signed(data_2, DATA_WIDTH));
@@ -138,7 +154,8 @@ BEGIN
 				data_1,
 				data_2,
 				to_integer(signed(result_out)),
-				to_integer(signed(tb_correct_result));
+				to_integer(signed(tb_correct_result)),
+				alu_operation);
 
 			-- Check unsigned values
 			data_1_in <= std_logic_vector(to_unsigned(data_1, DATA_WIDTH));
@@ -165,7 +182,8 @@ BEGIN
 				data_1,
 				data_2,
 				to_integer(unsigned(result_out)),
-				to_integer(unsigned(tb_correct_result));
+				to_integer(unsigned(tb_correct_result)),
+				alu_operation);
 		end CheckResult;
 
 
@@ -173,25 +191,12 @@ BEGIN
 		procedure CheckALUOperation(
 			alu_operation : alu_operation_t) is
 		begin
-			case alu_operation is
-				when ALU_ADD =>
-					alu_operation_string := "+";
-				when ALU_SUB =>
-					alu_operation_string := "-";
-				when ALU_AND =>
-					alu_operation_string := "AND";
-				when ALU_OR =>
-					alu_operation_string := "OR";
-				when ALU_SLT =>
-					alu_operation_string := "SLT";
-			end case;
-
 			CheckResult(0, 0, alu_operation);
 			CheckResult(200,0, alu_operation);
 			CheckResult(0, 200, alu_operation);
 			CheckResult(-1, 1, alu_operation);
-			CheckResult(4294967294,30, alu_operation);
-			CheckResult(-4294967294,-30, alu_operation);
+			CheckResult(294967293,30, alu_operation);
+			CheckResult(-294967294,-30, alu_operation);
 			CheckResult(321, -123, alu_operation);
 			CheckResult(-123, 321, alu_operation);
 			-- TODO add more test cases
@@ -211,11 +216,11 @@ BEGIN
 		CheckALUOperation(ALU_ADD);
 		report "Testing SUB";
 		CheckALUOperation(ALU_SUB);
-		report "Testing AND"
+		report "Testing AND";
 		CheckALUOperation(ALU_AND);	
-		report "Testing OR"
+		report "Testing OR";
 		CheckALUOperation(ALU_OR);
-		report "Testing SLT"
+		report "Testing SLT";
 		CheckALUOperation(ALU_SLT);
 
 
