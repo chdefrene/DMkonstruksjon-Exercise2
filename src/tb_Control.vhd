@@ -50,13 +50,13 @@ ARCHITECTURE behavior OF tb_Control IS
 	constant INSTR_ADD : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "100000";
 	constant INSTR_ADDI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001000" & "00000" & "00000" & x"0000";
 	constant INSTR_SUB : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "100010";
-	--constant INSTR_SUBI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "000000" & "00000" & "00000" & x"0000";
 	constant INSTR_AND : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "100100";
 	constant INSTR_ANDI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001100" & "00000" & "00000" & x"0000";
 	constant INSTR_OR : std_logic_vector(DATA_WIDTH-1 downto 0)    := "000000" & "00000" & "00000" & "00000" & "00000" & "100101";
 	constant INSTR_ORI : std_logic_vector(DATA_WIDTH-1 downto 0)   := "001101" & "00000" & "00000" & x"0000";
 	constant INSTR_SLT : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "101010";
 	constant INSTR_SLTI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001010" & "00000" & "00000" & x"0000";
+	constant INSTR_LUI : std_logic_vector(DATA_WIDTH-1 downto 0)   := "001111" & "00000" & "00000" & x"0000";
 	constant INSTR_BEQ : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000100" & "00000" & "00000" & x"0000";
 	constant INSTR_J : std_logic_vector(DATA_WIDTH-1 downto 0)     := "000010" & "00" & x"000000";
 	
@@ -339,8 +339,8 @@ BEGIN
 			severity failure;
 
 		-- Mem write should still be 1
-		assert mem_write_out = '1'
-			report "mem_write_out should be '1' for STORE instruction in statll state"
+		assert mem_write_out = '0'
+			report "mem_write_out should be '0' for STORE instruction in statll state"
 			severity failure;
 		
 		-- Done with STORE instruction
@@ -362,6 +362,7 @@ BEGIN
 		AssertALUInstruction(ALU_ADD);
 		report "ADD instruction passed";
 
+
 		--- ADDI (I type) ---
 		instruction_in <= INSTR_ADDI;
 		wait for clk_period;
@@ -371,6 +372,7 @@ BEGIN
 		AssertITypeInstruction;
 		AssertALUInstruction(ALU_ADD);
 		report "ADDI instruction passed";
+
 
 		--- SUB (R type) ---
 		instruction_in <= INSTR_SUB;
@@ -382,16 +384,7 @@ BEGIN
 		AssertALUInstruction(ALU_SUB);
 		report "SUB instruction passed";
 
---		--- SUBI (I type) ---
---		instruction_in <= INSTR_SUBI;
---		wait for clk_period;
---		AssertFetchState;
---		wait for clk_period;
---		AssertExecuteState;
---		AssertITypeInstruction;
---		AssertALUInstruction(ALU_SUB);
---		report "SUBI instruction passed";
-	
+
 		--- AND (R type) ---
 		instruction_in <= INSTR_AND;
 		wait for clk_period;
@@ -401,6 +394,7 @@ BEGIN
 		AssertRTypeInstruction;
 		AssertALUInstruction(ALU_AND);
 		report "AND instruction passed";
+		
 		
 		--- ANDI (I type) ---
 		instruction_in <= INSTR_ANDI;
@@ -412,6 +406,7 @@ BEGIN
 		AssertALUInstruction(ALU_AND);
 		report "ANDI instruction passed";
 		
+		
 		--- OR (R type) ---
 		instruction_in <= INSTR_OR;
 		wait for clk_period;
@@ -421,6 +416,7 @@ BEGIN
 		AssertRTypeInstruction;
 		AssertALUInstruction(ALU_OR);
 		report "OR instruction passed";
+		
 		
 		--- ORI (I type) ---
 		instruction_in <= INSTR_ORI;
@@ -432,7 +428,7 @@ BEGIN
 		AssertALUInstruction(ALU_OR);
 		report "ORI instruction passed";
 		
-
+		
 		--- SLT (R type) ---
 		instruction_in <= INSTR_SLT;
 		wait for clk_period;
@@ -442,6 +438,7 @@ BEGIN
 		AssertRTypeInstruction;
 		AssertALUInstruction(ALU_SLT);
 		report "SLT instruction passed";
+		
 		
 		--- SLTI (I type) ---
 		instruction_in <= INSTR_SLTI;
@@ -455,14 +452,13 @@ BEGIN
 
 
 		--- LUI (I type) ---
---		instruction_in <= INSTR_LUI;
---		wait for clk_period;
---		AssertFetchState;
---		wait for clk_period;
---		AssertExecuteState;
---		AssertITypeInstruction(ALU_SLL16);
---		report "LUI instruction passed";
-
+		instruction_in <= INSTR_LUI;
+		wait for clk_period;
+		AssertFetchState;
+		wait for clk_period;
+		AssertExecuteState;
+		AssertITypeInstruction;
+		report "LUI instruction passed";
 
 
 		--- Test BEQ instruction ---

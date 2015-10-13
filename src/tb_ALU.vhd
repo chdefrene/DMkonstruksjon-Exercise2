@@ -95,7 +95,7 @@ BEGIN
 			result : integer;
 			correct_result : integer;
 			alu_operation : alu_operation_t) is
-			variable alu_operation_string : string(0 to 2);
+			variable alu_operation_string : string(1 to 3);
 			variable string_length : integer;
 		begin
 			case alu_operation is
@@ -109,11 +109,13 @@ BEGIN
 					alu_operation_string := "OR ";
 				when ALU_SLT =>
 					alu_operation_string := "SLT";
+				when ALU_LUI =>
+					alu_operation_string := "LUI";
 			end case;
 			assert result_out = tb_correct_result
 				report
 					integer'image(data_1) &
-					" " & alu_operation_string(0 to 2) & " " &
+					" " & alu_operation_string(1 to 3) & " " &
 					integer'image(data_2) &
 					" should be: " & integer'image(correct_result) &
 					", was: " & integer'image(result)
@@ -148,6 +150,8 @@ BEGIN
 					else
 						tb_correct_result <= (others => '0');
 					end if;
+				when ALU_LUI =>
+					tb_correct_result <= std_logic_vector(signed(data_2_in) sll 16);
 			end case;
 			wait for clk_period;
 			AssertNumber(
@@ -176,6 +180,8 @@ BEGIN
 					else
 						tb_correct_result <= (others => '0');
 					end if;
+				when ALU_LUI =>
+					tb_correct_result <= std_logic_vector(unsigned(data_2_in) sll 16);
 			end case;
 			wait for clk_period;
 			AssertNumber(
@@ -212,30 +218,22 @@ BEGIN
 		reset <= '0';
 
 		--- Test the different ALU operations ---
-		report "Testing ADD";
 		CheckALUOperation(ALU_ADD);
-		report "Testing SUB";
+		report "ADD passed";
 		CheckALUOperation(ALU_SUB);
-		report "Testing AND";
+		report "SUB passed";
 		CheckALUOperation(ALU_AND);	
-		report "Testing OR";
+		report "AND passed";
 		CheckALUOperation(ALU_OR);
-		report "Testing SLT";
+		report "OR passed";
 		CheckALUOperation(ALU_SLT);
+		report "SLT passed";
+		CheckALUOperation(ALU_LUI);
+		report "LUI passed";
 
 
 		report "Test success";
 		wait;
-
-		--- TODO Consider implementing these ---
-
-		-- NOR
-		-- XOR
-		-- MULT
-		-- DIV
-		-- SLL
-		-- SRL
-		-- SRA
 
 	end process;
 
