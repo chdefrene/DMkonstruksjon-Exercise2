@@ -15,11 +15,13 @@ entity DataPath is
 	);
 	port (
 		clk, reset : in std_logic;
-		read_reg_1_in, read_reg_2_in, write_reg : in std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
+		read_reg_1_in, read_reg_2_in, write_reg_in : in std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
 		immediate_in : in std_logic_vector(IMMEDIATE_WIDTH-1 downto 0);
+		read_data_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
+		alu_result_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 		-- Control signals
 		reg_write_in, alu_src_in, mem_to_reg_in : in std_logic;
-		alu_result_out : out std_logic_vector(DATA_WIDTH-1 downto 0);  
+		alu_1_out, alu_2_out : out std_logic_vector(DATA_WIDTH-1 downto 0);  
 		write_data_out : out std_logic_vector(DATA_WIDTH-1 downto 0)
 	);
 end DataPath;
