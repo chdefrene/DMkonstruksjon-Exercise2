@@ -4,14 +4,14 @@ USE ieee.numeric_std.ALL;
 USE work.defs.ALL;
 
 
-ENTITY tb_ALU IS
-END tb_ALU;
+ENTITY tb_Control IS
+END tb_Control;
 
-ARCHITECTURE behavior OF tb_ALU IS
+ARCHITECTURE behavior OF tb_Control IS
 	constant ADDR_WIDTH : integer := 8;
 	constant DATA_WIDTH : integer := 32;
 	constant REG_ADDR_WIDTH : integer := 5;
-	constant IMMEDIATE_WIDTH : integer := 16
+	constant IMMEDIATE_WIDTH : integer := 16;
 
 	-- Component Declaration for the Unit Under Test (UUT)
 	COMPONENT Control
@@ -26,7 +26,7 @@ ARCHITECTURE behavior OF tb_ALU IS
 			instruction_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 			alu_control_out : out alu_operation_t;
 			read_reg_1_out, read_reg_2_out, write_reg_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
-			reg_dst_out, pc_write_out, branch_out, jump_out, reg_write_out, alu_src_out, mem_to_reg_out, mem_write_out : out std_logic
+			pc_write_out, branch_out, jump_out, reg_write_out, alu_src_out, mem_to_reg_out, mem_write_out : out std_logic
 		);
   END COMPONENT;
 
@@ -37,11 +37,30 @@ ARCHITECTURE behavior OF tb_ALU IS
 	
 	--Outputs
 	signal alu_control_out : alu_operation_t;
-	signal read_reg_1_out, read_reg_2_out, write_reg_out : std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
-	signal reg_dst_out, pc_write_out, branch_out, jump_out, reg_write_out, alu_src_out, mem_to_reg_out, mem_write_out : std_logic;
+	signal read_reg_1_out, read_reg_2_out, write_reg_out : std_logic_vector(REG_ADDR_WIDTH-1 downto 0) := (others => '0');
+	signal pc_write_out, branch_out, jump_out, reg_write_out, alu_src_out, mem_to_reg_out, mem_write_out : std_logic;
 
 	-- Clock period definitions
 	constant clk_period : time := 10 ns;
+	
+	
+	-- Test instructions
+	constant INSTR_LOAD : std_logic_vector(DATA_WIDTH-1 downto 0)  := "100011" & "00000" & "00000" & x"0000";
+	constant INSTR_STORE : std_logic_vector(DATA_WIDTH-1 downto 0) := "101011" & "00000" & "00000" & x"0000";
+	constant INSTR_ADD : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "100000";
+	constant INSTR_ADDI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001000" & "00000" & "00000" & x"0000";
+	constant INSTR_SUB : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "100010";
+	--constant INSTR_SUBI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "000000" & "00000" & "00000" & x"0000";
+	constant INSTR_AND : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "100100";
+	constant INSTR_ANDI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001100" & "00000" & "00000" & x"0000";
+	constant INSTR_OR : std_logic_vector(DATA_WIDTH-1 downto 0)    := "000000" & "00000" & "00000" & "00000" & "00000" & "100101";
+	constant INSTR_ORI : std_logic_vector(DATA_WIDTH-1 downto 0)   := "001101" & "00000" & "00000" & x"0000";
+	constant INSTR_SLT : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "101010";
+	constant INSTR_SLTI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001010" & "00000" & "00000" & x"0000";
+	constant INSTR_BEQ : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000100" & "00000" & "00000" & x"0000";
+	constant INSTR_J : std_logic_vector(DATA_WIDTH-1 downto 0)     := "000010" & "00" & x"000000";
+	
+	
 BEGIN
 
 	-- Instantiate the Unit Under Test (UUT)
@@ -53,14 +72,13 @@ BEGIN
 		read_reg_1_out => read_reg_1_out,
 		read_reg_2_out => read_reg_2_out,	
 		write_reg_out => write_reg_out,
-		reg_dst_out => reg_dst_out,
 		pc_write_out => pc_write_out,
 		branch_out => branch_out,
 		jump_out => jump_out,
 		reg_write_out => reg_write_out,
 		alu_src_out => alu_src_out,
 		mem_to_reg_out => mem_to_reg_out,
-		mem_write_out = mem_write_out
+		mem_write_out => mem_write_out
 	);
 
 	-- Clock process definitions
@@ -78,7 +96,7 @@ BEGIN
 	-- Stimulus process
 	stim_proc: process
 
-		process AssertFetchState is
+		procedure AssertFetchState is
 		begin
 			assert pc_write_out = '0'
 				report "pc_write_out should be '0' when in fetch state"
@@ -89,18 +107,24 @@ BEGIN
 			assert mem_write_out = '0'
 				report "mem_write_out should be '0' when in fetch state"
 				severity failure;
+			assert read_reg_1_out = instruction_in(25 downto 21)
+				report "read_reg_1_out should be instruction_in[25-21]"
+				severity failure;
+			assert read_reg_2_out = instruction_in(20 downto 16)
+				report "read_reg_2_out should be instruction[20-16]"
+				severity failure;
 		end AssertFetchState;
 
 
-		process AssertExecuteState is
+		procedure AssertExecuteState is
 		begin
-			assert pc_wite_out = '1'
+			assert pc_write_out = '1'
 				report "pc_write_out should be '1' in execute state"
 				severity failure;
 		end AssertExecuteState;
 			
 
-		process AssertStallState is
+		procedure AssertStallState is
 		begin
 			assert pc_write_out = '0'
 				report "pc_write_out should be '0' in stall state"
@@ -108,7 +132,7 @@ BEGIN
 		end AssertStallState; 
 
 
-		process AssertALUInstruction(
+		procedure AssertALUInstruction(
 			alu_operation : alu_operation_t) is
 		begin
 			-- Reg write enable
@@ -139,12 +163,17 @@ BEGIN
 		end AssertALUInstruction;
 
 
-		process AssertRTypeInstruction is
+		procedure AssertRTypeInstruction is
 		begin
-			-- Reg dst
-			assert reg_dst_out = '1'
-				report "reg_dst should be '1' to set register rd as write register"
+--			-- Reg dst
+--			assert reg_dst_out = '1'
+--				report "reg_dst should be '1' to set register rd as write register"
+--				severity failure;
+			-- Write reg 
+			assert write_reg_out = instruction_in(15 downto 11)
+				report "write_reg_out should be instruction_in[15-11] for R type instruction"
 				severity failure;
+	
 	
 			-- ALU src
 			assert alu_src_out = '0'
@@ -153,13 +182,15 @@ BEGIN
 		end AssertRTypeInstruction;
 
 
-		process AssertITypeInstruction is
+		procedure AssertITypeInstruction is
 		begin
-			-- Reg dst
-			assert reg_dst_out = '0'
-				report "reg_dst should be '0' to set register rt as write register"
+--			-- Reg dst
+--			assert reg_dst_out = '0'
+--				report "reg_dst should be '0' to set register rt as write register"
+--				severity failure;
+			assert write_reg_out = instruction_in(20 downto 16)
+				report "write_reg_out should be instruction_in[20-16] for I type instruction"
 				severity failure;
-	
 			-- ALU src
 			assert alu_src_out = '1'
 				report "alu_src_out should be '1' to select immediate value instead of register rt"
@@ -174,12 +205,14 @@ BEGIN
 		wait for 100 ns;
 		reset <= '0';
 
+		report "test";
+
 		-- Control should be in fetch state
 		AssertFetchState;
 
 		--- LOAD instruction ---
 		report "Testing LOAD instruction";
-		intruction_in <= INSTR_LOAD;
+		instruction_in <= INSTR_LOAD;
 		wait for clk_period;
 		
 		-- Control should now be in execute state
@@ -233,10 +266,11 @@ BEGIN
 		-- Reg write enable
 		assert reg_write_out = '1'
 			report "reg_write_out should be '1' for LOAD instruction in stall state to write the value in the register"
-		severity failure;
+			severity failure;
 
-		assert reg_dst_out = '0'
-			report "reg_dst_out should be '0' for LOAD instruciton in stall state to select rt from instruction"
+			assert write_reg_out = instruction_in(15 downto 11)
+				report "write_reg_out should be instruction_in[15-11] for LOAD instruction"
+				severity failure;
 
 		-- Mem write disable
 		assert mem_write_out = '0'
@@ -251,7 +285,7 @@ BEGIN
 		
 
 		--- Test STORE instruction
-		report "Testing STORE instruction"
+		report "Testing STORE instruction";
 
 		-- Should now be in fetch state
 		AssertFetchState;
@@ -292,7 +326,7 @@ BEGIN
 			severity failure;
 
 		-- instruction_in should now change
-		instruction_in <= INSTR_ADD
+		instruction_in <= INSTR_ADD;
 
 		wait for clk_period;
 
@@ -348,16 +382,16 @@ BEGIN
 		AssertALUInstruction(ALU_SUB);
 		report "SUB instruction passed";
 
-		--- SUBI (I type) ---
-		instruction_in <= INSTR_SUBI;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertITypeInstruction;
-		AssertALUInstruction(ALU_SUB);
-		report "SUBI instruction passed";
-		
+--		--- SUBI (I type) ---
+--		instruction_in <= INSTR_SUBI;
+--		wait for clk_period;
+--		AssertFetchState;
+--		wait for clk_period;
+--		AssertExecuteState;
+--		AssertITypeInstruction;
+--		AssertALUInstruction(ALU_SUB);
+--		report "SUBI instruction passed";
+	
 		--- AND (R type) ---
 		instruction_in <= INSTR_AND;
 		wait for clk_period;
@@ -432,7 +466,7 @@ BEGIN
 
 
 		--- Test BEQ instruction ---
-		instruction_in <= INSTR_BEQ
+		instruction_in <= INSTR_BEQ;
 		wait for clk_period;
 		AssertFetchState;
 		wait for clk_period;
@@ -475,7 +509,7 @@ BEGIN
 
 
 		--- Test J instruction (JUMP) ---
-		instruction <= INSTR_J;
+		instruction_in <= INSTR_J;
 		wait for clk_period;
 		AssertFetchState;
 		wait for clk_period;
