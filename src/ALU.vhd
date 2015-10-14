@@ -1,33 +1,77 @@
-library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-USE work.defs.ALL;
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
-
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use work.defs.all;
 
 entity ALU is
-	generic (
-		ADDR_WIDTH : integer := 8;	
-		DATA_WIDTH : integer := 32;
-		SHAMT_WIDTH : integer := 5
-	);
 	port (
-		clk, reset : in std_logic;
-		data_1_in, data_2_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
-		control_in : in alu_operation_t;
-		shamt_in : in std_logic_vector(SHAMT_WIDTH-1 downto 0);
-		result_out : out std_logic_vector(DATA_WIDTH-1 downto 0);
-		zero_out : out std_logic
-	);
+		rd1 : in std_logic; 		-- read data 1
+		rd2 : in std_logic;			-- read data 2
+		imm : in std_logic; 		-- immediate value
+		ALU_ctrl : in std_logic;
+		
+		ALU_result : out std_logic;
+		ALU_zero : out std_logic;
+		
+end entity ALU;
 
-end ALU;
+architecture behavioural of ALU is
+	
+	signal res : std_logic;
+	
+begin 
 
-architecture Behavioral of ALU is
+	ALU_zero = '0';
 
-begin
-	-- TEMP
-	result_out <= (others => '0');
-	zero_out <= '0';
-end Behavioral;
+	add : process ( rd1, rd2, imm )
+	begin
+		if (ALU_ctrl = XXXX) then		-- Check for I-type or R-type
+			res <= rd1 + rd2;
+		else 
+			res <= rd1 + imm;
+	end process;
+	
+	sub : process ( rd1, rd2, imm )
+	begin
+		if (ALU_ctrl = XXXX) then		-- Check for I-type or R-type
+			res <= rd1 - rd2;
+			ALU_zero = '1';
+		else 
+			res <= rd1 - imm;
+	end process;
+	
+	slt : process ( rd1, rd2, imm )
+	begin
+		if (ALU_ctrl = XXXX) then		-- Check for I-type or R-type
+			res <= '1' when rd1<rd2 else '0';
+		else 
+			res <= '1' when rd1<imm else '0';
+	end process;
+	
+	ALU_and : process ( rd1, rd2, imm )
+	begin
+		if (ALU_ctrl = XXXX) then		-- Check for I-type or R-type
+			res <= rd1 and rd2;
+		else 
+			res <= rd1 and imm;
+	end process;
+	
+	ALU_or : process ( rd1, rd2, imm )
+	begin
+		if (ALU_ctrl = XXXX) then		-- Check for I-type or R-type
+			res <= rd1 or rd2;
+		else 
+			res <= rd1 or imm;
+	end process;
+	
+	ALU_sll : process ( rd1, rd2, imm )
+	begin
+		if (ALU_ctrl = XXXX) then		-- Check for I-type or R-type
+			res <= rd1 sll rd2;
+		else 
+			res <= rd1 sll imm;
+	end process;
+	
+	ALU_result <= res;
 
+end architecture behavioural;
