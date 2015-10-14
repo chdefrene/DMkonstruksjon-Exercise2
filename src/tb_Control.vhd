@@ -25,6 +25,7 @@ ARCHITECTURE behavior OF tb_Control IS
 			clk, reset : in std_logic;
 			instruction_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 			alu_control_out : out alu_operation_t;
+			shamt_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
 			read_reg_1_out, read_reg_2_out, write_reg_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
 			pc_write_out, branch_out, jump_out, reg_write_out, alu_src_out, mem_to_reg_out, mem_write_out : out std_logic
 		);
@@ -37,6 +38,7 @@ ARCHITECTURE behavior OF tb_Control IS
 	
 	--Outputs
 	signal alu_control_out : alu_operation_t;
+	signal shamt_out : std_logic_vector(REG_ADDR_WIDTH-1 downto 0) := (others => '0');
 	signal read_reg_1_out, read_reg_2_out, write_reg_out : std_logic_vector(REG_ADDR_WIDTH-1 downto 0) := (others => '0');
 	signal pc_write_out, branch_out, jump_out, reg_write_out, alu_src_out, mem_to_reg_out, mem_write_out : std_logic;
 
@@ -45,19 +47,20 @@ ARCHITECTURE behavior OF tb_Control IS
 	
 	
 	-- Test instructions
-	constant INSTR_LOAD : std_logic_vector(DATA_WIDTH-1 downto 0)  := "100011" & "00000" & "00000" & x"0000";
-	constant INSTR_STORE : std_logic_vector(DATA_WIDTH-1 downto 0) := "101011" & "00000" & "00000" & x"0000";
-	constant INSTR_ADD : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "100000";
-	constant INSTR_ADDI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001000" & "00000" & "00000" & x"0000";
-	constant INSTR_SUB : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "100010";
-	constant INSTR_AND : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "100100";
-	constant INSTR_ANDI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001100" & "00000" & "00000" & x"0000";
-	constant INSTR_OR : std_logic_vector(DATA_WIDTH-1 downto 0)    := "000000" & "00000" & "00000" & "00000" & "00000" & "100101";
-	constant INSTR_ORI : std_logic_vector(DATA_WIDTH-1 downto 0)   := "001101" & "00000" & "00000" & x"0000";
-	constant INSTR_SLT : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "00000" & "00000" & "00000" & "00000" & "101010";
-	constant INSTR_SLTI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001010" & "00000" & "00000" & x"0000";
-	constant INSTR_LUI : std_logic_vector(DATA_WIDTH-1 downto 0)   := "001111" & "00000" & "00000" & x"0000";
-	constant INSTR_BEQ : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000100" & "00000" & "00000" & x"0000";
+	constant INSTR_LOAD : std_logic_vector(DATA_WIDTH-1 downto 0)  := "100011" & "11100" & "00011" & x"0010";
+	constant INSTR_STORE : std_logic_vector(DATA_WIDTH-1 downto 0) := "101011" & "11100" & "00011" & x"0010";
+	constant INSTR_ADD : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "10000" & "01000" & "00100" & "00010" & "100000";
+	constant INSTR_ADDI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001000" & "10000" & "01000" & x"0010";
+	constant INSTR_SUB : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "10000" & "01000" & "00100" & "00010" & "100010";
+	constant INSTR_AND : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "10000" & "01000" & "00100" & "00010" & "100100";
+	constant INSTR_ANDI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001100" & "10000" & "01000" & x"0010";
+	constant INSTR_OR : std_logic_vector(DATA_WIDTH-1 downto 0)    := "000000" & "10000" & "01000" & "00100" & "00010" & "100101";
+	constant INSTR_ORI : std_logic_vector(DATA_WIDTH-1 downto 0)   := "001101" & "10000" & "01000" & x"0010";
+	constant INSTR_SLT : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "10000" & "01000" & "00100" & "00010" & "101010";
+	constant INSTR_SLTI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001010" & "10000" & "01000" & x"0010";
+	constant INSTR_SLL : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "10000" & "01000" & "00100" & "00010" & "000000";
+	constant INSTR_LUI : std_logic_vector(DATA_WIDTH-1 downto 0)   := "001111" & "10000" & "01000" & x"0010";
+	constant INSTR_BEQ : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000100" & "10000" & "01000" & x"0010";
 	constant INSTR_J : std_logic_vector(DATA_WIDTH-1 downto 0)     := "000010" & "00" & x"000000";
 	
 	
@@ -69,6 +72,7 @@ BEGIN
 		reset => reset,
 		instruction_in => instruction_in,
 		alu_control_out => alu_control_out,
+		shamt_out => shamt_out,
 		read_reg_1_out => read_reg_1_out,
 		read_reg_2_out => read_reg_2_out,	
 		write_reg_out => write_reg_out,
@@ -178,6 +182,11 @@ BEGIN
 			-- ALU src
 			assert alu_src_out = '0'
 				report "alu_src_out should be '0' to select register rt instead of immediate value"
+				severity failure;
+				
+			-- SHAMT should always be put through on R type instruction
+			assert shamt_out = instruction_in(5 downto 0)
+				report "shamt_out should always be put through on R type instructions"
 				severity failure;
 		end AssertRTypeInstruction;
 
@@ -451,6 +460,15 @@ BEGIN
 		report "SLTI instruction passed";
 
 
+		--- SLL (R type) ---
+		instruction_in <= INSTR_SLL;
+		wait for clk_period;
+		AssertFetchState;
+		wait for clk_period;
+		AssertExecuteState;
+		AssertRTypeInstruction;
+		report "SLL instruction passed";
+
 		--- LUI (I type) ---
 		instruction_in <= INSTR_LUI;
 		wait for clk_period;
@@ -458,6 +476,9 @@ BEGIN
 		wait for clk_period;
 		AssertExecuteState;
 		AssertITypeInstruction;
+		assert unsigned(shamt_out) = 16
+			report "shamt_out for LUI should be set to 16"
+			severity failure;
 		report "LUI instruction passed";
 
 
