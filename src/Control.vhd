@@ -22,7 +22,7 @@ entity Control is
 end Control;
 
 architecture Behavioral of Control is
-	type control_state is (FETCH, EXECUTE, STALL);
+	type control_state is (FETCH, EXECUTE, STALL, START);
 	
 	signal state : control_state;
 	signal i_type, j_type : std_logic;
@@ -37,9 +37,11 @@ begin
 	state_proc: process(clk, reset)
 	begin
 		if reset = '1' then
-			state <= FETCH;
+			state <= START;
 		elsif rising_edge(clk) and enable = '1' then
-			if state = FETCH then
+			if state = START then
+				state <= FETCH;
+			elsif state = FETCH then
 				state <= EXECUTE;
 			elsif state = EXECUTE and instruction_in(31) = '1' then
 				state <= STALL;
@@ -64,12 +66,12 @@ begin
 	alu_src_out <= '1' when i_type = '1' and opcode(5 downto 1) /= "00010" else '0';
 	jump_out <= j_type;
 	branch_out <= '1' when opcode(5 downto 1) = "00010" else '0';
-	mem_write_out <= '1' when opcode(5 downto 2) = "1010" and state /= FETCH else '0';
+	mem_write_out <= '1' when opcode(5 downto 2) = "1010" and state /= FETCH and state /= START else '0';
 	mem_to_reg_out <= '1' when opcode(5 downto 3) = "100" else '0';
 	pc_write_out <= '1' when (state = EXECUTE and instruction_in(31) /= '1') or state = STALL else '0';
 	reg_write_out <= '1' when
 			(
-				state /= FETCH and
+				state /= FETCH and state /= START and
 				opcode /= "000010" and
 				opcode(4 downto 1) /= "0010" and
 				opcode(5) = '0'
