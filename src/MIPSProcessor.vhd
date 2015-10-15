@@ -30,9 +30,8 @@ entity MIPSProcessor is
 	);
 end MIPSProcessor;
 
-architecture DummyArch of MIPSProcessor is
+architecture Behavioral of MIPSProcessor is
 
-	signal immediate : std_logic_vector(15 downto 0);
 	signal alu_1, alu_2, alu_result : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal alu_control : alu_operation_t;
 	signal alu_zero, mem_to_reg, alu_src, reg_write, jump, branch, pc_write : std_logic;
@@ -46,14 +45,14 @@ begin
 			read_reg_1_in => read_reg_1,
 			read_reg_2_in => read_reg_2,
 			write_reg_in => write_reg,
-			immediate_in => immediate,
+			immediate_in => imem_data_in(15 downto 0),
 			read_data_in => dmem_data_in,
 			alu_result_in => alu_result,
 			reg_write_in => reg_write,
 			alu_src_in => alu_src,
 			mem_to_reg_in => mem_to_reg,
 			alu_1_out => alu_1,
-			alu_2_out => alu_1,
+			alu_2_out => alu_2,
 			write_data_out => dmem_data_out
 		);
 		
@@ -71,6 +70,7 @@ begin
 	control : entity work.Control port map (
 			clk => clk,
 			reset => reset,
+			enable => processor_enable,
 			instruction_in => imem_data_in,
 			alu_control_out => alu_control,
 			alu_shamt_out => alu_shamt,
@@ -96,5 +96,7 @@ begin
 			zero_out => alu_zero
 		);
 
-end DummyArch;
+	dmem_address <= alu_result(ADDR_WIDTH-1 downto 0);
+
+end Behavioral;
 
