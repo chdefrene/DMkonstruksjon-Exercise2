@@ -6,7 +6,7 @@ use work.defs.all;
 entity ALU is
 	port (
 		rd1 : in std_logic; 		-- read data 1
-		rd2 : in std_logic;			-- read data 2
+		rd2 : in std_logic;		-- read data 2
 		imm : in std_logic; 		-- immediate value
 		ALU_ctrl : in std_logic;
 		
@@ -35,7 +35,8 @@ begin
 	begin
 		if (ALU_ctrl = XXXX) then		-- Check for I-type or R-type
 			res <= rd1 - rd2;
-			ALU_zero = '1';
+			if (res = '0') then
+				ALU_zero = '1';
 		else 
 			res <= rd1 - imm;
 	end process;
