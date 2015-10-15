@@ -1,10 +1,6 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
---use IEEE.NUMERIC_STD.ALL;
-
+use IEEE.NUMERIC_STD.ALL;
 
 entity DataPath is
 	generic (
@@ -28,8 +24,33 @@ end DataPath;
 
 architecture Behavioral of DataPath is
 
+	type register_file_t is array(31 downto 0) of std_logic_vector(DATA_WIDTH-1 downto 0);
+
+	signal register_file : register_file_t;
+	signal reg_write_data : std_logic_vector(DATA_WIDTH-1 downto 0);
+	
+
 begin
 
+	-- Handle register updates
+	process (clk, reset) is begin
+			if reset = '1' then
+				register_file <= (others => (others => '0'));
+			elsif rising_edge(clk) and reg_write_in = '1' then
+				register_file(to_integer(unsigned(write_reg_in))) <= reg_write_data;
+			end if;
+	end process;
 
+	with mem_to_reg_in select reg_write_data <=
+		read_data_in when '1',
+		alu_result_in when others;
+
+	-- Outputs for ALU and memory
+	alu_1_out <= register_file(to_integer(unsigned(read_reg_1_in)));
+	write_data_out <= register_file(to_integer(unsigned(read_reg_2_in)));
+	with alu_src_in select alu_2_out <=
+		register_file(to_integer(unsigned(read_reg_2_in))) when '0',
+		std_logic_vector(resize(signed(immediate_in), DATA_WIDTH)) when others;
+	
 end Behavioral;
 
