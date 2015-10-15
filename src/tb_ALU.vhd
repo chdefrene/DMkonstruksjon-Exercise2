@@ -20,7 +20,7 @@ ARCHITECTURE behavior OF tb_ALU IS
 		SHAMT_WIDTH : integer := 5
 	);
 	port (
-		clk, reset : in std_logic;
+		reset : in std_logic;
 		data_1_in, data_2_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 		control_in : in alu_operation_t;
 		shamt_in : in std_logic_vector(SHAMT_WIDTH-1 downto 0);
@@ -54,7 +54,6 @@ BEGIN
 
 	-- Instantiate the Unit Under Test (UUT)
 	uut: ALU PORT MAP (
-		clk => clk,
 		reset => reset,
 		data_1_in => data_1_in,
 		data_2_in => data_2_in,

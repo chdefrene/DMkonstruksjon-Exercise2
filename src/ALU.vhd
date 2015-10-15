@@ -10,7 +10,7 @@ entity ALU is
 		SHAMT_WIDTH : integer := 5
 	);
 	port (
-		clk, reset : in std_logic;
+		reset : in std_logic;
 		data_1_in : in std_logic_vector(DATA_WIDTH-1 downto 0); 		-- read data 1
 		data_2_in : in std_logic_vector(DATA_WIDTH-1 downto 0);		-- read data 2
 		control_in : in alu_operation_t;
