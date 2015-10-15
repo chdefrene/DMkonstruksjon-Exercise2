@@ -22,7 +22,7 @@ ARCHITECTURE behavior OF tb_Control IS
 			IMMEDIATE_WIDTH : integer := 16
 		);
 		port (
-			clk, reset : in std_logic;
+			clk, reset, enable : in std_logic;
 			instruction_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 			alu_control_out : out alu_operation_t;
 			alu_shamt_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
@@ -34,6 +34,7 @@ ARCHITECTURE behavior OF tb_Control IS
   --Inputs
 	signal clk : std_logic := '0';
 	signal reset : std_logic := '0';
+	signal enable : std_logic := '1';
 	signal instruction_in : std_logic_vector(DATA_WIDTH-1 downto 0) := (others => '0');
 	
 	--Outputs
@@ -70,6 +71,7 @@ BEGIN
 	uut: Control PORT MAP (
 		clk => clk,
 		reset => reset,
+		enable => enable,
 		instruction_in => instruction_in,
 		alu_control_out => alu_control_out,
 		alu_shamt_out => alu_shamt_out,

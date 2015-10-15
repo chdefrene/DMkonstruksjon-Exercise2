@@ -11,7 +11,7 @@ entity Control is
 		IMMEDIATE_WIDTH : integer := 16
 	);
 	port (
-		clk, reset : in std_logic;
+		clk, reset, enable : in std_logic;
 		instruction_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 		alu_shamt_out : out std_logic_vector(4 downto 0);
 		alu_control_out : out alu_operation_t;
@@ -27,7 +27,7 @@ architecture Behavioral of Control is
 	signal state : control_state;
 	signal i_type, j_type : std_logic;
 	signal opcode : std_logic_vector (5 downto 0);
-	signal rs, rt, rd, sh : std_logic_vector (4 downto 0);
+	signal rs, rt, rd : std_logic_vector (4 downto 0);
 	signal func : std_logic_vector (5 downto 0);
 	signal func_op : alu_operation_t;
 
@@ -38,7 +38,7 @@ begin
 	begin
 		if reset = '1' then
 			state <= FETCH;
-		elsif rising_edge(clk) then
+		elsif rising_edge(clk) and enable = '1' then
 			if state = FETCH then
 				state <= EXECUTE;
 			elsif state = EXECUTE and instruction_in(31) = '1' then
@@ -57,7 +57,6 @@ begin
 	rs <= instruction_in(25 downto 21);
 	rt <= instruction_in(20 downto 16);
 	rd <= instruction_in(15 downto 11);
-	sh <= instruction_in(10 downto 6);
 	func <= instruction_in(5 downto 0);
 
 
