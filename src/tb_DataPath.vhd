@@ -95,19 +95,19 @@ BEGIN
 		alu_src_in <= '0';
 		
 		-- Registers should now be zero
-		for i in 0 to 32 loop
+		for i in 0 to 31 loop
 			read_reg_1_in <= std_logic_vector(to_unsigned(i,5));
-			for j in 0 to 32 loop
+			for j in 0 to 31 loop
 				read_reg_2_in <= std_logic_vector(to_unsigned(j,5));
 				wait for clk_period;
-				assert alu_1_out = x"00000000" and alu_2_out = x"00000000";
+				assert alu_1_out = x"00000000" and alu_2_out = x"00000000"
 					report "all registers should be 0 after reset"
 					severity failure;
 			end loop;
 		end loop;
 		
 		-- Try to fill registers with values when RegWrite is 0
-		for i in 1 to 32 loop
+		for i in 1 to 31 loop
 			write_reg_in <= std_logic_vector(to_unsigned(i,5));
 			alu_result_in <= std_logic_vector(to_unsigned(i,32));
 			mem_to_reg_in <= '0';
@@ -116,12 +116,12 @@ BEGIN
 		end loop;
 		
 		-- Registers should still be zero
-		for i in 0 to 32 loop
+		for i in 0 to 31 loop
 			read_reg_1_in <= std_logic_vector(to_unsigned(i,5));
-			for j in 0 to 32 loop
+			for j in 0 to 31 loop
 				read_reg_2_in <= std_logic_vector(to_unsigned(j,5));
 				wait for clk_period;
-				assert alu_1_out = x"00000000" and alu_2_out = x"00000000";
+				assert alu_1_out = x"00000000" and alu_2_out = x"00000000"
 					report "Registers should not update value while reg_write_in is '0'"
 					severity failure;
 			end loop;
@@ -129,7 +129,7 @@ BEGIN
 		
 			
 		-- Fill registers with values when RegWrite is 1
-		for i in 1 to 32 loop
+		for i in 1 to 31 loop
 			write_reg_in <= std_logic_vector(to_unsigned(i,5));
 			alu_result_in <= std_logic_vector(to_unsigned(i,32));
 			mem_to_reg_in <= '0';
@@ -143,12 +143,12 @@ BEGIN
 		
 		
 		-- Check if we get the correct values out
-		for i in 1 to 32 loop
+		for i in 1 to 31 loop
 			read_reg_1_in <= std_logic_vector(to_unsigned(i,5));
-			for j in 0 to 32 loop
-				read_reg_2_in <= std_logic_vector(to_unsigned(i,5));
+			for j in 0 to 31 loop
+				read_reg_2_in <= std_logic_vector(to_unsigned(j,5));
 				wait for clk_period;
-				assert alu_1_out = std_logic_vector(to_unsigned(i,5)) and alu_2_out = std_logic_vector(to_unsigned(j,5))
+				assert alu_1_out = std_logic_vector(to_unsigned(i,32)) and alu_2_out = std_logic_vector(to_unsigned(j,32))
 					report "ALU out 1 and 2 has wrong values"
 					severity failure;
 			end loop;
@@ -179,10 +179,15 @@ BEGIN
 			report "alu_2_out should be sign extended immediate in"
 			severity failure;
 			
-		-- write_data_out should be register 4 value
-		assert write_data_out = x"00000100"
-			report "write_data_out out should be the same as read data 2"
-			severity failure;
+		-- write_data_out should be register 2 output
+		alu_src_in <= '0';
+		for i in 0 to 31 loop
+			read_reg_2_in <= std_logic_vector(to_unsigned(i, 5));
+			wait for clk_period;
+			assert write_data_out = alu_2_out
+				report "write_data_out out should be the same as read data 2 when alu_src_in = '0'"
+				severity failure;
+		end loop;
 			
 		
 		-- Test MemToReg
