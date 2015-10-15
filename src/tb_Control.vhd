@@ -25,7 +25,7 @@ ARCHITECTURE behavior OF tb_Control IS
 			clk, reset : in std_logic;
 			instruction_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 			alu_control_out : out alu_operation_t;
-			shamt_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
+			alu_shamt_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
 			read_reg_1_out, read_reg_2_out, write_reg_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
 			pc_write_out, branch_out, jump_out, reg_write_out, alu_src_out, mem_to_reg_out, mem_write_out : out std_logic
 		);
@@ -38,7 +38,7 @@ ARCHITECTURE behavior OF tb_Control IS
 	
 	--Outputs
 	signal alu_control_out : alu_operation_t;
-	signal shamt_out : std_logic_vector(REG_ADDR_WIDTH-1 downto 0) := (others => '0');
+	signal alu_shamt_out : std_logic_vector(REG_ADDR_WIDTH-1 downto 0) := (others => '0');
 	signal read_reg_1_out, read_reg_2_out, write_reg_out : std_logic_vector(REG_ADDR_WIDTH-1 downto 0) := (others => '0');
 	signal pc_write_out, branch_out, jump_out, reg_write_out, alu_src_out, mem_to_reg_out, mem_write_out : std_logic;
 
@@ -72,7 +72,7 @@ BEGIN
 		reset => reset,
 		instruction_in => instruction_in,
 		alu_control_out => alu_control_out,
-		shamt_out => shamt_out,
+		alu_shamt_out => alu_shamt_out,
 		read_reg_1_out => read_reg_1_out,
 		read_reg_2_out => read_reg_2_out,	
 		write_reg_out => write_reg_out,
@@ -122,16 +122,22 @@ BEGIN
 
 		procedure AssertExecuteState is
 		begin
-			assert pc_write_out = '1'
-				report "pc_write_out should be '1' in execute state"
-				severity failure;
+			if instruction_in(31) = '0' then
+				assert pc_write_out = '1'
+					report "pc_write_out should be '1' in execute state"
+					severity failure;
+			else
+				assert pc_write_out = '0'
+					report "pc_write_out should be '1' in execute state"
+					severity failure;
+			end if;
 		end AssertExecuteState;
 			
 
 		procedure AssertStallState is
 		begin
-			assert pc_write_out = '0'
-				report "pc_write_out should be '0' in stall state"
+			assert pc_write_out = '1'
+				report "pc_write_out should be '1' in stall state"
 				severity failure;
 		end AssertStallState; 
 
@@ -185,8 +191,8 @@ BEGIN
 				severity failure;
 				
 			-- SHAMT should always be put through on R type instruction
-			assert shamt_out = instruction_in(5 downto 0)
-				report "shamt_out should always be put through on R type instructions"
+			assert alu_shamt_out = instruction_in(10 downto 6)
+				report "alu_shamt_out should always be put through on R type instructions"
 				severity failure;
 		end AssertRTypeInstruction;
 
@@ -261,8 +267,6 @@ BEGIN
 		-- Wait a clock cycle						
 		wait for clk_period;
 
-		-- Instruction from memory changes to a STORE instruction
-		instruction_in <= INSTR_STORE;
 
 		-- Should now be in stall state
 		AssertStallState;
@@ -277,8 +281,8 @@ BEGIN
 			report "reg_write_out should be '1' for LOAD instruction in stall state to write the value in the register"
 			severity failure;
 
-			assert write_reg_out = instruction_in(15 downto 11)
-				report "write_reg_out should be instruction_in[15-11] for LOAD instruction"
+			assert write_reg_out = instruction_in(20 downto 16)
+				report "write_reg_out should be instruction_in[20-16] for LOAD instruction"
 				severity failure;
 
 		-- Mem write disable
@@ -298,6 +302,10 @@ BEGIN
 
 		-- Should now be in fetch state
 		AssertFetchState;
+
+
+		-- Instruction from memory changes to a STORE instruction
+		instruction_in <= INSTR_STORE;
 
 		wait for clk_period;
 		
@@ -334,8 +342,6 @@ BEGIN
 			report "mem_write_out should be '1' for STORE instruction"
 			severity failure;
 
-		-- instruction_in should now change
-		instruction_in <= INSTR_ADD;
 
 		wait for clk_period;
 
@@ -348,8 +354,8 @@ BEGIN
 			severity failure;
 
 		-- Mem write should still be 1
-		assert mem_write_out = '0'
-			report "mem_write_out should be '0' for STORE instruction in statll state"
+		assert mem_write_out = '1'
+			report "mem_write_out should be '1' for STORE instruction in stall state"
 			severity failure;
 		
 		-- Done with STORE instruction
@@ -358,6 +364,8 @@ BEGIN
 
 		wait for clk_period;
 
+		-- instruction_in should now change
+		instruction_in <= INSTR_ADD;
 
 
 		--- Testing R type and I type instructions ---
@@ -476,8 +484,8 @@ BEGIN
 		wait for clk_period;
 		AssertExecuteState;
 		AssertITypeInstruction;
-		assert unsigned(shamt_out) = 16
-			report "shamt_out for LUI should be set to 16"
+		assert unsigned(alu_shamt_out) = 16
+			report "alu_shamt_out for LUI should be set to 16"
 			severity failure;
 		report "LUI instruction passed";
 
