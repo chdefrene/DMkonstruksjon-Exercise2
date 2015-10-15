@@ -81,12 +81,12 @@ BEGIN
 		-- Procedure for asserting zero_out
 		procedure AssertZero is
 		begin
-				if tb_correct_result = std_logic_vector(to_unsigned(0,DATA_WIDTH)) then
-				assert zero_out = '0'
+			if unsigned(tb_correct_result) = 0 then
+				assert zero_out = '1'
 					report "zero_out should be 1 when result_out is 0"
 					severity failure;
 			else
-				assert zero_out = '1'
+				assert zero_out = '0'
 					report "zero_out should be 0 when result_out is not 0"
 					severity failure;
 			end if;	
@@ -103,6 +103,7 @@ BEGIN
 			variable alu_operation_string : string(1 to 3);
 			variable string_length : integer;
 		begin
+			-- ALU operation string for building a report string
 			case alu_operation is
 				when ALU_ADD =>
 					alu_operation_string := " + ";
@@ -117,6 +118,8 @@ BEGIN
 				when ALU_SLL =>
 					alu_operation_string := "SLL";
 			end case;
+			
+			-- Assert and report error
 			assert result_out = tb_correct_result
 				report
 					integer'image(data_1) &
@@ -142,70 +145,45 @@ BEGIN
 			assert_arg1 := data_1;
 			assert_arg2 := data_2;
 			
-			-- Check signed values
+			-- Set the in signals
 			data_1_in <= std_logic_vector(to_signed(data_1, DATA_WIDTH));
 			data_2_in <= std_logic_vector(to_signed(data_2, DATA_WIDTH));
 			shamt_in <= std_logic_vector(to_unsigned(shamt, SHAMT_WIDTH));
 			control_in <= alu_operation;
+			
+			-- Set the correct result to check against
 			case alu_operation is
 				when ALU_ADD =>
-					tb_correct_result <= std_logic_vector(signed(data_1_in) + signed(data_2_in));		
+					tb_correct_result <= std_logic_vector(to_signed(data_1 + data_2, DATA_WIDTH));		
 				when ALU_SUB =>
-					tb_correct_result <= std_logic_vector(signed(data_1_in) - signed(data_2_in));
+					tb_correct_result <= std_logic_vector(to_signed(data_1 - data_2, DATA_WIDTH));
 				when ALU_AND =>
-					tb_correct_result <= data_1_in and data_2_in;
+					tb_correct_result <= std_logic_vector(to_signed(data_1, DATA_WIDTH) and to_signed(data_2,DATA_WIDTH));
 				when ALU_OR =>
-					tb_correct_result <= data_1_in or data_2_in;
+					tb_correct_result <= std_logic_vector(to_signed(data_1, DATA_WIDTH) or to_signed(data_2,DATA_WIDTH));
 				when ALU_SLT =>
-					if signed(data_1_in) < signed(data_2_in) then
+					if data_1 < data_2 then
 						tb_correct_result <= (0=>'1', others => '0');
 					else
 						tb_correct_result <= (others => '0');
 					end if;
 				when ALU_SLL =>
-					tb_correct_result <= std_logic_vector(signed(data_2_in) sll shamt);
+					tb_correct_result <= std_logic_vector(to_signed(data_2,DATA_WIDTH) sll shamt);
 					assert_arg1 := data_2;
 					assert_arg2 := shamt;
 			end case;
+			
+			-- Wait for signals to propagate
 			wait for clk_period;
+			
+			-- Assert result = correct result
 			AssertNumber(
 				assert_arg1,
 				assert_arg2,
 				to_integer(signed(result_out)),
 				to_integer(signed(tb_correct_result)),
 				alu_operation);
-
-			-- Check unsigned values
-			data_1_in <= std_logic_vector(to_unsigned(data_1, DATA_WIDTH));
-			data_2_in <= std_logic_vector(to_unsigned(data_2, DATA_WIDTH));
-			control_in <= alu_operation;
-			case alu_operation is
-				when ALU_ADD =>
-					tb_correct_result <= std_logic_vector(unsigned(data_1_in) + unsigned(data_2_in));		
-				when ALU_SUB =>
-					tb_correct_result <= std_logic_vector(unsigned(data_1_in) - unsigned(data_2_in));
-				when ALU_AND =>
-					tb_correct_result <= data_1_in and data_2_in;
-				when ALU_OR =>
-					tb_correct_result <= data_1_in or data_2_in;
-				when ALU_SLT =>
-					if unsigned(data_1_in) < unsigned(data_2_in) then
-						tb_correct_result <= (0=>'1', others => '0');
-					else
-						tb_correct_result <= (others => '0');
-					end if;
-				when ALU_SLL =>
-					tb_correct_result <= std_logic_vector(signed(data_2_in) sll shamt);
-					assert_arg1 := data_2;
-					assert_arg2 := shamt;
-			end case;
-			wait for clk_period;
-			AssertNumber(
-				assert_arg1,
-				assert_arg2,
-				to_integer(unsigned(result_out)),
-				to_integer(unsigned(tb_correct_result)),
-				alu_operation);
+				
 		end CheckResult;
 
 
@@ -213,23 +191,33 @@ BEGIN
 		procedure CheckALUOperation(
 			alu_operation : alu_operation_t) is
 		begin
+			-- Zero test
 			CheckResult(0, 0, 0, alu_operation);
-			CheckResult(200,0, 0, alu_operation);
-			CheckResult(0, 200, 0, alu_operation);
+			
+			-- Positive and zero
+			CheckResult(123,0, 0, alu_operation);
+			CheckResult(0, 123, 0, alu_operation);
+			
+			-- -1 and 1
 			CheckResult(-1, 1, 0, alu_operation);
+			
+			-- Try to get overflow / underflow
 			CheckResult(294967293,30, 0, alu_operation);
 			CheckResult(-294967294,-30, 0, alu_operation);
+			
+			-- Positive and negative
 			CheckResult(321, -123, 0, alu_operation);
 			CheckResult(-123, 321, 0, alu_operation);
+			
+			-- Test with shamt values
 			CheckResult(0, 0, 16, alu_operation);
-			CheckResult(200,0, 1, alu_operation);
-			CheckResult(0, 200, 3, alu_operation);
-			CheckResult(-1, 1, 32, alu_operation);
+			CheckResult(123,0, 1, alu_operation);
+			CheckResult(0, 123, 3, alu_operation);
+			CheckResult(-1, 1, 31, alu_operation);
 			CheckResult(294967293,30, 5, alu_operation);
 			CheckResult(-294967294,-30, 4, alu_operation);
 			CheckResult(321, -123, 16, alu_operation);
 			CheckResult(-123, 321, 16, alu_operation);
-			-- TODO add more test cases
 
 		end CheckALUOperation;
 
@@ -240,7 +228,7 @@ BEGIN
 		reset <= '1';
 		wait for 100 ns;
 		reset <= '0';
-
+		
 		--- Test the different ALU operations ---
 		CheckALUOperation(ALU_ADD);
 		report "ADD passed";
