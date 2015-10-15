@@ -50,7 +50,7 @@ begin
 	
 	ALU_and : process ( rd1, rd2, imm )
 	begin
-		if (ALU_ctrl = XXXX) then		-- Check for I-type or R-type
+		if (ALU_ctrl = XXXX) then		-- Check for I-type or R-type 
 			res <= rd1 and rd2;
 		else 
 			res <= rd1 and imm;
@@ -64,6 +64,7 @@ begin
 			res <= rd1 or imm;
 	end process;
 	
+	-- This does not compile on current system. Use shift_left instead 
 	ALU_sll : process ( rd1, rd2, imm )
 	begin
 		if (ALU_ctrl = XXXX) then		-- Check for I-type or R-type
