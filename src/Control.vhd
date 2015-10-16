@@ -124,7 +124,7 @@ begin
 	
 	alu_control_out <=
 		ALU_ADD when is_load_store or opcode(5 downto 1) = "00100" else -- ADDI and ADDIU
-		ALU_SUB when opcode(5 downto 1) = "00010" else -- SUBI and SUBIU
+		ALU_SUB when opcode(5 downto 1) = "00010" else -- BEQ and BNE
 		ALU_OR when opcode = OP_ORI else
 		ALU_AND when opcode = OP_ANDI else
 		ALU_SLT when opcode = OP_SLTI else

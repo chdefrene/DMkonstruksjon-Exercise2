@@ -181,10 +181,6 @@ BEGIN
 
 		procedure AssertRTypeInstruction is
 		begin
---			-- Reg dst
---			assert reg_dst_out = true
---				report "reg_dst should be true to set register rd as write register"
---				severity failure;
 			-- Write reg 
 			assert write_reg_out = instruction_in(15 downto 11)
 				report "write_reg_out should be instruction_in[15-11] for R type instruction"
@@ -205,10 +201,6 @@ BEGIN
 
 		procedure AssertITypeInstruction is
 		begin
---			-- Reg dst
---			assert reg_dst_out = '0'
---				report "reg_dst should be '0' to set register rt as write register"
---				severity failure;
 			assert write_reg_out = instruction_in(20 downto 16)
 				report "write_reg_out should be instruction_in[20-16] for I type instruction"
 				severity failure;
