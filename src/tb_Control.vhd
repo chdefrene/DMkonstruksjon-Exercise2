@@ -222,7 +222,8 @@ BEGIN
 		wait for 100 ns;
 		reset <= '0';
 
-		report "test";
+		-- Processor starts after first clock tick
+		wait for clk_period;
 
 		-- Control should be in fetch state
 		AssertFetchState;
@@ -337,11 +338,6 @@ BEGIN
 		-- ALU control should be ADD
 		assert alu_control_out = ALU_ADD
 			report "alu_control_out should be ALU_ADD for STORE instruction"
-			severity failure;
-
-		-- Should write to memory
-		assert mem_write_out = '1'
-			report "mem_write_out should be '1' for STORE instruction"
 			severity failure;
 
 
