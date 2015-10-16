@@ -22,7 +22,7 @@ end ControlFlow;
 
 architecture Behavioral of ControlFlow is
 
-	signal pc, pc_in, pc_add_1, pc_jump, pc_immediate_signextend, pc_add_immediate, pc_branch : unsigned(DATA_WIDTH-1 downto 0);
+	signal pc : unsigned(DATA_WIDTH-1 downto 0);
 	
 begin
 
@@ -34,10 +34,12 @@ begin
 		elsif rising_edge(clk) and pc_write_in = '1' then
 			-- Handle Jumps
 			if jump_in = '1' then
-				pc <= (pc and "11111100000000000000000000000000") or (unsigned(instruction_in) and "00000011111111111111111111111111");
+				pc <= (pc and x"FC000000") or (unsigned(instruction_in) and x"03FFFFFF");
 			-- Handle branches
 			elsif branch_in = '1' and alu_zero_in = '1' then
-				pc <= pc + 1 + resize(unsigned(instruction_in(15 downto 0)), DATA_WIDTH);
+				pc <= pc + 1 + unsigned(
+					(DATA_WIDTH-1 downto 16 => instruction_in(15)) & instruction_in(15 downto 0)
+				);
 			-- Handle increment by 1
 			else
 				pc <= pc + 1;

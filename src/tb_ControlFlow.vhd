@@ -7,77 +7,78 @@ END tb_ControlFlow;
 
 ARCHITECTURE behavior OF tb_ControlFlow IS
 
-    -- Component Declaration for the Unit Under Test (UUT)
+	 -- Component Declaration for the Unit Under Test (UUT)
 
-    COMPONENT ControlFlow
-	 GENERIC(
+	COMPONENT ControlFlow
+	GENERIC(
 			  ADDR_WIDTH : integer := 32
 		 );
-    PORT(
-         clk : IN  std_logic;
-         reset : IN  std_logic;
-         pc_out : OUT  std_logic_vector(31 downto 0);
-         alu_zero_in : IN  std_logic;
-         branch_in : IN  std_logic;
-         jump_in : IN  std_logic;
-			pc_write_in : IN  std_logic;
-			instruction_in : IN  std_logic_vector(31 downto 0)
-        );
+	 PORT(
+			clk : IN  std_logic;
+			reset : IN	std_logic;
+			pc_out : OUT  std_logic_vector(31 downto 0);
+			alu_zero_in : IN	std_logic;
+			branch_in : IN  std_logic;
+			jump_in : IN  std_logic;
+			pc_write_in : IN	std_logic;
+			instruction_in : IN	std_logic_vector(31 downto 0)
+		  );
 
-    END COMPONENT;
+	 END COMPONENT;
 
 
-   --Inputs
-   signal clk : std_logic := '0';
-   signal reset : std_logic := '0';
-   signal alu_zero_in : std_logic := '0';
-   signal branch_in : std_logic := '0';
-   signal jump_in : std_logic := '0';
+	--Inputs
+	signal clk : std_logic := '0';
+	signal reset : std_logic := '0';
+	signal alu_zero_in : std_logic := '0';
+	signal branch_in : std_logic := '0';
+	signal jump_in : std_logic := '0';
 	signal pc_write_in : std_logic := '0';
 	signal instruction_in : std_logic_vector(31 downto 0) := x"00000000";
 
- 	--Outputs
-   signal pc_out : std_logic_vector(31 downto 0);
+	--Outputs
+	signal pc_out : std_logic_vector(31 downto 0);
 
-   -- Clock period definitions
-   constant clk_period : time := 10 ns;
+	-- Clock period definitions
+	constant clk_period : time := 10 ns;
 
 BEGIN
 
 	-- Instantiate the Unit Under Test (UUT)
-   uut: ControlFlow PORT MAP (
-          clk => clk,
-          reset => reset,
-          pc_out => pc_out,
-          alu_zero_in => alu_zero_in,
-          branch_in => branch_in,
-          jump_in => jump_in,
+	uut: ControlFlow PORT MAP (
+			 clk => clk,
+			 reset => reset,
+			 pc_out => pc_out,
+			 alu_zero_in => alu_zero_in,
+			 branch_in => branch_in,
+			 jump_in => jump_in,
 			 pc_write_in => pc_write_in,
 			 instruction_in => instruction_in
-        );
+		  );
 
-   -- Clock process definitions
-   clk_process :process
-   begin
+	-- Clock process definitions
+	clk_process :process
+	begin
 		clk <= '0';
 		wait for clk_period/2;
 		clk <= '1';
 		wait for clk_period/2;
-   end process;
+	end process;
 
 
-   -- Stimulus process
-   stim_proc: process
-   begin
-      -- hold reset state for 100 ns.
+	-- Stimulus process
+	stim_proc: process
+	begin
+		-- hold reset state for 100 ns.
 		reset <= '1';
-      wait for 100 ns;
+		wait for 100 ns;
 		reset <= '0';
 
 		-- Default pc value
 		assert pc_out = x"00000000"
-			report "pc_out should be 0 after reset"
+			report "pc_out should be 0 after first clock cycle"
 			severity failure;
+
 
 		-- No change on pc_write = 0
 		for i in 0 to 8 loop
@@ -111,7 +112,7 @@ BEGIN
 
 		-- Automatic pc increase on pc_write
 		for i in 1 to 10 loop
-		   wait for clk_period;
+			wait for clk_period;
 
 			assert to_integer(unsigned(pc_out)) = i
 				report "pc_out should increment by 1 each clock cycle when pc_write = '1'"
@@ -197,6 +198,6 @@ BEGIN
 		report "Test success!";
 		wait;
 
-   end process;
+	end process;
 
 END;
