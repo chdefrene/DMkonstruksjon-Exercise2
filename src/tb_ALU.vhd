@@ -25,7 +25,7 @@ ARCHITECTURE behavior OF tb_ALU IS
 		control_in : in alu_operation_t;
 		shamt_in : in std_logic_vector(SHAMT_WIDTH-1 downto 0);
 		result_out : out std_logic_vector(DATA_WIDTH-1 downto 0);
-		zero_out : out std_logic
+		zero_out : out boolean
 	);
   END COMPONENT;
 
@@ -40,7 +40,7 @@ ARCHITECTURE behavior OF tb_ALU IS
 
 	--Outputs
 	signal result_out : std_logic_vector(DATA_WIDTH-1 downto 0) := x"00000000";
-	signal zero_out: std_logic;
+	signal zero_out: boolean;
 
 	-- Clock period definitions
 	constant clk_period : time := 10 ns;
@@ -81,12 +81,12 @@ BEGIN
 		procedure AssertZero is
 		begin
 			if unsigned(tb_correct_result) = 0 then
-				assert zero_out = '1'
-					report "zero_out should be 1 when result_out is 0"
+				assert zero_out = true
+					report "zero_out should be true when result_out is 0"
 					severity failure;
 			else
-				assert zero_out = '0'
-					report "zero_out should be 0 when result_out is not 0"
+				assert zero_out = false
+					report "zero_out should be false when result_out is not 0"
 					severity failure;
 			end if;	
 		end AssertZero;

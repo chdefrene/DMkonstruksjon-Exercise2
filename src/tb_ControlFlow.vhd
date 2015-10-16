@@ -17,10 +17,10 @@ ARCHITECTURE behavior OF tb_ControlFlow IS
 			clk : IN  std_logic;
 			reset : IN	std_logic;
 			pc_out : OUT  std_logic_vector(31 downto 0);
-			alu_zero_in : IN	std_logic;
-			branch_in : IN  std_logic;
-			jump_in : IN  std_logic;
-			pc_write_in : IN	std_logic;
+			alu_zero_in : IN	boolean;
+			branch_in : IN  boolean;
+			jump_in : IN  boolean;
+			pc_write_in : IN	boolean;
 			instruction_in : IN	std_logic_vector(31 downto 0)
 		  );
 
@@ -30,10 +30,10 @@ ARCHITECTURE behavior OF tb_ControlFlow IS
 	--Inputs
 	signal clk : std_logic := '0';
 	signal reset : std_logic := '0';
-	signal alu_zero_in : std_logic := '0';
-	signal branch_in : std_logic := '0';
-	signal jump_in : std_logic := '0';
-	signal pc_write_in : std_logic := '0';
+	signal alu_zero_in : boolean := false;
+	signal branch_in : boolean := false;
+	signal jump_in : boolean := false;
+	signal pc_write_in : boolean := false;
 	signal instruction_in : std_logic_vector(31 downto 0) := x"00000000";
 
 	--Outputs
@@ -83,21 +83,21 @@ BEGIN
 		-- No change on pc_write = 0
 		for i in 0 to 8 loop
 			if (i mod 2) = 0 then
-				branch_in <= '0';
+				branch_in <= false;
 			else
-				branch_in <= '1';
+				branch_in <= true;
 			end if;
 
 			if ((i/2) mod 2) = 0 then
-				alu_zero_in <= '0';
+				alu_zero_in <= false;
 			else
-				alu_zero_in <= '1';
+				alu_zero_in <= true;
 			end if;
 
 			if ((i/4) mod 2) = 0 then
-				jump_in <= '0';
+				jump_in <= false;
 			else
-				jump_in <= '1';
+				jump_in <= true;
 			end if;
 
 			wait for clk_period;
@@ -107,7 +107,7 @@ BEGIN
 		end loop;
 
 		---- Start doing something interesting ----
-		pc_write_in <= '1';
+		pc_write_in <= true;
 
 
 		-- Automatic pc increase on pc_write
@@ -115,17 +115,17 @@ BEGIN
 			wait for clk_period;
 
 			assert to_integer(unsigned(pc_out)) = i
-				report "pc_out should increment by 1 each clock cycle when pc_write = '1'"
+				report "pc_out should increment by 1 each clock cycle when pc_write = true"
 				severity failure;
 		end loop;
 
 		-- Can do branching forward
-		branch_in <= '1';
-		alu_zero_in <= '1';
+		branch_in <= true;
+		alu_zero_in <= true;
 		instruction_in <= x"0000000F"; -- Immediate: 15
 		wait for clk_period;
 		assert to_integer(unsigned(pc_out)) = 26
-			report "Does not branch on branch = '1' and zero = '1'"
+			report "Does not branch on branch = true and zero = true"
 			severity failure;
 
 		-- Can do branching backwards
@@ -150,24 +150,24 @@ BEGIN
 			severity failure;
 
 		-- Not branching when zero = 1
-		alu_zero_in <= '0';
+		alu_zero_in <= false;
 		wait for clk_period;
 		assert to_integer(unsigned(pc_out)) = 15
-			report "Branching even when zero = '0'"
+			report "Branching even when zero = false"
 			severity failure;
 
 		-- Not branching when branch = 0
-		alu_zero_in <= '1';
-		branch_in <= '0';
+		alu_zero_in <= true;
+		branch_in <= false;
 		wait for clk_period;
 		assert to_integer(unsigned(pc_out)) = 16
-			report "Branching even when branch = '0'"
+			report "Branching even when branch = false"
 			severity failure;
 
 		-- Simple jump works
-		alu_zero_in <= '0';
-		branch_in <= '0';
-		jump_in <= '1';
+		alu_zero_in <= false;
+		branch_in <= false;
+		jump_in <= true;
 		instruction_in <= x"000000FF";
 		wait for clk_period;
 		assert pc_out = x"000000FF"
@@ -183,14 +183,14 @@ BEGIN
 
 		-- Try ticking over limits
 		for i in 1 to 10 loop
-			jump_in <= '0';
+			jump_in <= false;
 			wait for clk_period;
 			assert to_integer(unsigned(pc_out(31 downto 26))) = i and
 					to_integer(unsigned(pc_out(25 downto 0))) = 0
 				report "Not incrementing properly after jump"
 				severity failure;
 
-			jump_in <= '1';
+			jump_in <= true;
 			wait for clk_period;
 		end loop;
 

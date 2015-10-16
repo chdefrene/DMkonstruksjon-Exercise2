@@ -1,9 +1,7 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
- 
--- Uncomment the following library declaration if using
--- arithmetic functions with Signed or Unsigned values
 USE ieee.numeric_std.ALL;
+USE work.defs.ALL;
  
 ENTITY tb_DataPath IS
 END tb_DataPath;
@@ -22,9 +20,9 @@ ARCHITECTURE behavior OF tb_DataPath IS
          immediate_in : IN  std_logic_vector(15 downto 0);
          read_data_in : IN  std_logic_vector(31 downto 0);
          alu_result_in : IN  std_logic_vector(31 downto 0);
-         reg_write_in : IN  std_logic;
-         alu_src_in : IN  std_logic;
-         mem_to_reg_in : IN  std_logic;
+         reg_write_in : IN  boolean;
+         alu_src_in : IN  alu_src_t;
+         reg_src_in : IN  reg_src_t;
          alu_1_out : OUT  std_logic_vector(31 downto 0);
          alu_2_out : OUT  std_logic_vector(31 downto 0);
          write_data_out : OUT  std_logic_vector(31 downto 0)
@@ -41,9 +39,9 @@ ARCHITECTURE behavior OF tb_DataPath IS
    signal immediate_in : std_logic_vector(15 downto 0) := (others => '0');
    signal read_data_in : std_logic_vector(31 downto 0) := (others => '0');
    signal alu_result_in : std_logic_vector(31 downto 0) := (others => '0');
-   signal reg_write_in : std_logic := '0';
-   signal alu_src_in : std_logic := '0';
-   signal mem_to_reg_in : std_logic := '0';
+   signal reg_write_in : boolean := false;
+   signal alu_src_in : alu_src_t := ALU_SRC_REGISTER;
+   signal reg_src_in : reg_src_t := REG_SRC_ALU;
 
  	--Outputs
    signal alu_1_out : std_logic_vector(31 downto 0);
@@ -67,7 +65,7 @@ BEGIN
           alu_result_in => alu_result_in,
           reg_write_in => reg_write_in,
           alu_src_in => alu_src_in,
-          mem_to_reg_in => mem_to_reg_in,
+          reg_src_in => reg_src_in,
           alu_1_out => alu_1_out,
           alu_2_out => alu_2_out,
           write_data_out => write_data_out
@@ -92,7 +90,7 @@ BEGIN
 		reset <= '0';
 		
 		-- Set ALU src to output read data 2
-		alu_src_in <= '0';
+		alu_src_in <= ALU_SRC_REGISTER;
 		
 		-- Registers should now be zero
 		for i in 0 to 31 loop
@@ -110,8 +108,8 @@ BEGIN
 		for i in 1 to 31 loop
 			write_reg_in <= std_logic_vector(to_unsigned(i,5));
 			alu_result_in <= std_logic_vector(to_unsigned(i,32));
-			mem_to_reg_in <= '0';
-			reg_write_in <= '0';
+			reg_src_in <= REG_SRC_ALU;
+			reg_write_in <= false;
 			wait for clk_period;
 		end loop;
 		
@@ -122,7 +120,7 @@ BEGIN
 				read_reg_2_in <= std_logic_vector(to_unsigned(j,5));
 				wait for clk_period;
 				assert alu_1_out = x"00000000" and alu_2_out = x"00000000"
-					report "Registers should not update value while reg_write_in is '0'"
+					report "Registers should not update value while reg_write_in is false"
 					severity failure;
 			end loop;
 		end loop;
@@ -132,14 +130,14 @@ BEGIN
 		for i in 1 to 31 loop
 			write_reg_in <= std_logic_vector(to_unsigned(i,5));
 			alu_result_in <= std_logic_vector(to_unsigned(i,32));
-			mem_to_reg_in <= '0';
-			reg_write_in <= '1';
+			reg_src_in <= REG_SRC_ALU;
+			reg_write_in <= true;
 			wait for clk_period;
 		end loop;
 		
 		
 		-- Do not write any more values
-		reg_write_in <= '0';
+		reg_write_in <= false;
 		
 		
 		-- Check if we get the correct values out
@@ -169,7 +167,7 @@ BEGIN
 		
 		
 		-- Test alu_src_in for immediate value
-		alu_src_in <= '1';
+		alu_src_in <= ALU_SRC_IMMEDIATE;
 		read_reg_2_in <= "00100"; -- Register 4, should have value 4
 		immediate_in <= x"1001"; -- Immediate value 
 		wait for clk_period;
@@ -180,12 +178,12 @@ BEGIN
 			severity failure;
 			
 		-- write_data_out should be register 2 output
-		alu_src_in <= '0';
+		alu_src_in <= ALU_SRC_REGISTER;
 		for i in 0 to 31 loop
 			read_reg_2_in <= std_logic_vector(to_unsigned(i, 5));
 			wait for clk_period;
 			assert write_data_out = alu_2_out
-				report "write_data_out out should be the same as read data 2 when alu_src_in = '0'"
+				report "write_data_out out should be the same as read data 2 when alu_src_in = ALU_SRC_REGISTER"
 				severity failure;
 		end loop;
 			
@@ -193,17 +191,17 @@ BEGIN
 		-- Test MemToReg
 		alu_result_in <= x"00011000";
 		read_data_in <= x"11001100";
-		mem_to_reg_in <= '1';
+		reg_src_in <= REG_SRC_MEMORY;
 		read_reg_1_in <= "10000"; -- Read reg 16
 		write_reg_in <= "10000"; -- Write reg 16
-		reg_write_in <= '1';
+		reg_write_in <= true;
 		wait for clk_period;
-		reg_write_in <= '0';
+		reg_write_in <= false;
 		
 		
 		-- alu_1_out should now be read_data_in
 		assert alu_1_out = read_data_in
-			report "alu_1_out should be read_data_in when mem_to_reg is '1'"
+			report "alu_1_out should be read_data_in when mem_to_reg is true"
 			severity failure;
 			
 

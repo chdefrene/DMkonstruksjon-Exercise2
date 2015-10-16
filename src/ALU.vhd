@@ -16,7 +16,7 @@ entity ALU is
 		control_in : in alu_operation_t;
 		shamt_in : std_logic_vector(SHAMT_WIDTH-1 downto 0);
 		result_out : out std_logic_vector(DATA_WIDTH-1 downto 0);
-		zero_out : out std_logic
+		zero_out : out boolean
 	);
 		
 end entity ALU;
@@ -64,7 +64,7 @@ begin
 	end process;
 
 	-- Output zero if result is 0
-	zero_out <= '1' when unsigned(result) = 0 else '0';
+	zero_out <= unsigned(result) = 0;
 	
 	-- Output result
 	result_out <= result;

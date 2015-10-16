@@ -6,7 +6,6 @@
 -- MIPSProcessor.vhd
 -- The MIPS processor component to be used in Exercise 1 and 2.
 
--- TODO replace the architecture DummyArch with a working Behavioral
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -34,8 +33,10 @@ architecture Behavioral of MIPSProcessor is
 
 	signal alu_1, alu_2, alu_result : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal alu_control : alu_operation_t;
-	signal alu_zero, mem_to_reg, alu_src, reg_write, jump, branch, pc_write : std_logic;
+	signal alu_zero, reg_write, jump, branch, pc_write, mem_write : boolean;
+	signal reg_src : reg_src_t;
 	signal alu_shamt, read_reg_1, read_reg_2, write_reg : std_logic_vector(4 downto 0);
+	signal alu_src : alu_src_t;
 
 begin
 	
@@ -50,7 +51,7 @@ begin
 			alu_result_in => alu_result,
 			reg_write_in => reg_write,
 			alu_src_in => alu_src,
-			mem_to_reg_in => mem_to_reg,
+			reg_src_in => reg_src,
 			alu_1_out => alu_1,
 			alu_2_out => alu_2,
 			write_data_out => dmem_data_out
@@ -82,8 +83,8 @@ begin
 			jump_out => jump,
 			reg_write_out => reg_write,
 			alu_src_out => alu_src,
-			mem_to_reg_out => mem_to_reg,
-			mem_write_out => dmem_write_enable
+			reg_src_out => reg_src,
+			mem_write_out => mem_write
 		);
 
 	alu : entity work.ALU port map (
@@ -97,6 +98,7 @@ begin
 		);
 
 	dmem_address <= alu_result(ADDR_WIDTH-1 downto 0);
+	dmem_write_enable <= '1' when mem_write else '0';
 
 end Behavioral;
 
