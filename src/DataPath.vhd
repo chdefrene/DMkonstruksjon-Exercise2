@@ -36,7 +36,7 @@ architecture Behavioral of DataPath is
 begin
 
 	-- Handle register updates
-	process (clk, reset) is begin
+	process (clk, reset, reg_write_in) is begin
 			if reset = '1' then
 				register_file <= (others => (others => '0'));
 			elsif rising_edge(clk) and reg_write_in then

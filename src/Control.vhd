@@ -52,7 +52,7 @@ architecture Behavioral of Control is
 begin
 
 	-- State machine updates
-	state_proc: process(clk, reset)
+	state_proc: process(clk, reset, is_enabled)
 	begin
 		if reset = '1' then
 			state <= START;

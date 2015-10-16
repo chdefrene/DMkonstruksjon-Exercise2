@@ -27,7 +27,7 @@ architecture Behavioral of ControlFlow is
 begin
 
 	-- Process for PC register
-	PCBehaviour: process(clk, reset)
+	PCBehaviour: process(clk, reset, pc_write_in)
 	begin
 		if reset = '1' then
 			pc <= (others => '0');
