@@ -4,7 +4,7 @@ For use in TDT4255
 # Oppgavefordeling:
 
 ##Christian
-Control impelementation
+Control implementation
 
 Control Flow test
 
@@ -14,6 +14,6 @@ Datapath implementation
 Control test
 
 ##Truls
-Control Flow impementation
+Control Flow implementation
 
 Datapath test
