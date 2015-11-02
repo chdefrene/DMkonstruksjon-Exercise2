@@ -22,7 +22,7 @@ end ControlFlow;
 
 architecture Behavioral of ControlFlow is
 
-	signal pc : unsigned(DATA_WIDTH-1 downto 0);
+	signal pc, extended_imm, next_pc, jump_target, branch_target, branch_base : unsigned(DATA_WIDTH-1 downto 0);
 	
 begin
 
@@ -31,24 +31,36 @@ begin
 	begin
 		if reset = '1' then
 			pc <= (others => '0');
-		elsif rising_edge(clk) and pc_write_in then
-			-- Handle Jumps
-			if jump_in then
-				pc <= (pc and x"FC000000") or (unsigned(instruction_in) and x"03FFFFFF");
-			-- Handle branches
-			elsif branch_in and alu_zero_in then
-				pc <= pc + 1 + unsigned(
+		elsif rising_edge(clk) then
+
+			-- Fetch => decode
+			next_pc <= pc + 1;
+			branch_base <= next_pc;
+			jump_target <= next_pc(DATA_WIDTH - 1 downto DATA_WIDTH - 7) &
+						unsigned(instruction_in(DATA_WIDTH - 4 downto 0));
+
+
+			-- Decode => Execute
+			branch_target <= branch_base + unsigned(
 					(DATA_WIDTH-1 downto 16 => instruction_in(15)) & instruction_in(15 downto 0)
 				);
-			-- Handle increment by 1
-			else
-				pc <= pc + 1;
+
+			-- * => Fetch
+			if pc_write_in then
+
+				if jump_in then
+					pc <= jump_target;
+				elsif branch_in and alu_zero_in then
+					pc <= branch_target;
+				else
+					pc <= next_pc;
+				end if;
+
 			end if;
+
 		end if;
 	end process;
+
 	pc_out <= std_logic_vector(pc(ADDR_WIDTH-1 downto 0));
 
-
-
 end Behavioral;
-
