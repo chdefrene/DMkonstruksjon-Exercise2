@@ -154,8 +154,8 @@ BEGIN
 
 		-- Check that value is held for a clock cycle
 		for i in 1 to 31 loop
-			read_reg_1_in <= std_logic_vector(to_unsigned(i,5));
 			for j in 0 to 31 loop
+				read_reg_1_in <= std_logic_vector(to_unsigned(i,5));
 				read_reg_2_in <= std_logic_vector(to_unsigned(j,5));
 
 				-- Simulate rising edge
@@ -244,15 +244,16 @@ BEGIN
 			assert mem_addr_out = std_logic_vector(to_unsigned(i, 32))
 				report "mem_addr should be held for one clock cycle"
 				severity failure;
-
+				
+			alu_result_in <= std_logic_vector(to_unsigned(i, 32));
 			wait for clk_period;
 			reg_write_in <= true;
 			wait for clk_period;
 			reg_write_in <= false;
 			wait for clk_period;
-			
+
 			-- check reg output
-			assert to_integer(unsigned(alu_2_out)) = i
+			assert to_integer(unsigned(alu_1_out)) = i
 				report "Correct alu result not written back"
 				severity failure;
 
@@ -269,13 +270,14 @@ BEGIN
 			wait for clk_period;
 
 			-- check reg output
-			assert to_integer(unsigned(alu_2_out)) = i
+			assert to_integer(unsigned(alu_1_out)) = i
 				report "Correct memory data not written back"
 				severity failure;
 
 		end loop;
 
 		report "Test success";
+		wait;
    end process;
 
 END;
