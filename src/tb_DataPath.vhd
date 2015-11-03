@@ -126,16 +126,15 @@ BEGIN
 		
 		-- Registers should still be zero
 		AssertRegsZero;
-			
+
+		reg_write_in <= true;
 		-- Fill registers with values when RegWrite is 1
 		for i in 1 to 31 loop
 			write_reg_in <= std_logic_vector(to_unsigned(i,5));
-			alu_result_in <= std_logic_vector(to_unsigned(i,32));
-			reg_src_in <= REG_SRC_ALU;
-			reg_write_in <= true;
+			read_data_in <= std_logic_vector(to_unsigned(i,32));
+			reg_src_in <= REG_SRC_MEMORY;
 			wait for clk_period;
 		end loop;
-		
 		
 		-- Do not write any more values
 		reg_write_in <= false;
@@ -178,11 +177,9 @@ BEGIN
 		
 		-- Try to write a value in register 0
 		write_reg_in <= "00000";
-		alu_result_in <= x"11111111";
+		read_data_in <= x"11111111";
 		read_reg_1_in <= "00000";
 		read_reg_2_in <= "00000";
-		
-		wait for 2*clk_period;
 		reg_write_in <= true;
 		wait for clk_period;
 		reg_write_in <= false;
