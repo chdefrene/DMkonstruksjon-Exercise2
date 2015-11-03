@@ -181,6 +181,11 @@ BEGIN
 		alu_result_in <= x"11111111";
 		read_reg_1_in <= "00000";
 		read_reg_2_in <= "00000";
+		
+		wait for 2*clk_period;
+		reg_write_in <= true;
+		wait for clk_period;
+		reg_write_in <= false;
 		wait for clk_period;
 		
 		-- Should always output 0
@@ -204,12 +209,12 @@ BEGIN
 		immediate_in <= x"1000";
 		wait for 2*clk_period/5; -- No rising edge
 		assert alu_2_out = x"00001001"
-			report "alu_2_out should be sign extended immediate in"
+			report "alu_2_out should be delayed by one cycle"
 			severity failure;
 
 		wait for 3*clk_period/5; -- Rising edge
 		assert alu_2_out = std_logic_vector(resize(signed(immediate_in),32))
-			report "alu_2_out should be sign extended immediate in"
+			report "alu_2_out should be delayed by one cycle only"
 			severity failure;
 
 
@@ -246,21 +251,24 @@ BEGIN
 			wait for clk_period;
 			reg_write_in <= true;
 			wait for clk_period;
-
+			reg_write_in <= false;
+			wait for clk_period;
+			
 			-- check reg output
 			assert to_integer(unsigned(alu_2_out)) = i
 				report "Correct alu result not written back"
 				severity failure;
 
-			reg_write_in <= false;
-
 		end loop;
 
 		reg_src_in <= REG_SRC_MEMORY;
-		reg_write_in <= true;
+
 		for i in 0 to 200 loop
 			read_data_in <= std_logic_vector(to_unsigned(i, 32));
-
+			
+			reg_write_in <= true;
+			wait for clk_period;
+			reg_write_in <= false;
 			wait for clk_period;
 
 			-- check reg output
