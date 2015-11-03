@@ -16,7 +16,7 @@ ARCHITECTURE behavior OF tb_Control IS
 	-- Component Declaration for the Unit Under Test (UUT)
 	COMPONENT Control
 		generic (
-			ADDR_WIDTH : integer := 8;
+			ADDR_WIDTH : integer := 8;	
 			DATA_WIDTH : integer := 32;
 			REG_ADDR_WIDTH : integer := 5;
 			IMMEDIATE_WIDTH : integer := 16
@@ -38,22 +38,45 @@ ARCHITECTURE behavior OF tb_Control IS
 	signal reset : std_logic := '0';
 	signal enable : std_logic := '1';
 	signal instruction_in : std_logic_vector(DATA_WIDTH-1 downto 0) := (others => '0');
-
+	
 	--Outputs
 	signal alu_control_out : alu_operation_t;
 	signal alu_shamt_out : std_logic_vector(REG_ADDR_WIDTH-1 downto 0) := (others => '0');
 	signal read_reg_1_out, read_reg_2_out, write_reg_out : std_logic_vector(REG_ADDR_WIDTH-1 downto 0) := (others => '0');
-	signal pc_write_out, branch_out, jump_out, reg_write_out, mem_write_out : boolean;
-	signal reg_src_out : reg_src_t;
-	signal alu_src_out : alu_src_t;
+	signal pc_write_out, branch_out, jump_out, reg_write_out, mem_write_out : boolean := false;
+	signal reg_src_out : reg_src_t := REG_SRC_ALU;
+	signal alu_src_out : alu_src_t := ALU_SRC_REGISTER;
+	
+	-- Testbench signals
+	signal tb_execute_instruction : std_logic_vector(DATA_WIDTH-1 downto 0);
+	signal tb_mem_instruction : std_logic_vector(DATA_WIDTH-1 downto 0);
+	signal tb_writeback_instruction : std_logic_vector(DATA_WIDTH-1 downto 0);
+
+	
 
 	-- Clock period definitions
 	constant clk_period : time := 10 ns;
+	
 
 
+	-- Constants
+	constant FUNC_ADD : std_logic_vector(5 downto 0) := "100000";
+	constant FUNC_SUB : std_logic_vector(5 downto 0) := "100010";
+	constant FUNC_AND : std_logic_vector(5 downto 0) := "100100";
+	constant FUNC_OR  : std_logic_vector(5 downto 0) := "100101";
+	constant FUNC_SLT : std_logic_vector(5 downto 0) := "101010";
+	constant FUNC_SLL : std_logic_vector(5 downto 0) := "000000";
+	
+	constant OPCODE_ADDI : std_logic_vector(5 downto 0) := "001000";
+	constant OPCODE_ANDI : std_logic_vector(5 downto 0) := "001100";
+	constant OPCODE_ORI  : std_logic_vector(5 downto 0) := "001101";
+	constant OPCODE_SLTI : std_logic_vector(5 downto 0) := "001010";
+	constant OPCODE_LUI  : std_logic_vector(5 downto 0) := "001111";
+	
+	
 	-- Test instructions
-	constant INSTR_LOAD : std_logic_vector(DATA_WIDTH-1 downto 0)  := "100011" & "11100" & "00011" & x"0010";
-	constant INSTR_STORE : std_logic_vector(DATA_WIDTH-1 downto 0) := "101011" & "11100" & "00011" & x"0010";
+	constant INSTR_LW : std_logic_vector(DATA_WIDTH-1 downto 0)    := "100011" & "11100" & "00011" & x"0010";
+	constant INSTR_SW : std_logic_vector(DATA_WIDTH-1 downto 0)    := "101011" & "11100" & "00011" & x"0010";
 	constant INSTR_ADD : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "10000" & "01000" & "00100" & "00010" & "100000";
 	constant INSTR_ADDI : std_logic_vector(DATA_WIDTH-1 downto 0)  := "001000" & "10000" & "01000" & x"0010";
 	constant INSTR_SUB : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000000" & "10000" & "01000" & "00100" & "00010" & "100010";
@@ -67,6 +90,7 @@ ARCHITECTURE behavior OF tb_Control IS
 	constant INSTR_LUI : std_logic_vector(DATA_WIDTH-1 downto 0)   := "001111" & "10000" & "01000" & x"0010";
 	constant INSTR_BEQ : std_logic_vector(DATA_WIDTH-1 downto 0)   := "000100" & "10000" & "01000" & x"0010";
 	constant INSTR_J : std_logic_vector(DATA_WIDTH-1 downto 0)     := "000010" & "00" & x"000000";
+	constant INSTR_NONE : std_logic_vector(DATA_WIDTH-1 downto 0)  := x"00000000";
 
 
 BEGIN
@@ -80,7 +104,7 @@ BEGIN
 		alu_control_out => alu_control_out,
 		alu_shamt_out => alu_shamt_out,
 		read_reg_1_out => read_reg_1_out,
-		read_reg_2_out => read_reg_2_out,
+		read_reg_2_out => read_reg_2_out,	
 		write_reg_out => write_reg_out,
 		pc_write_out => pc_write_out,
 		branch_out => branch_out,
@@ -106,109 +130,411 @@ BEGIN
 	-- Stimulus process
 	stim_proc: process
 
-		procedure AssertFetchState is
+
+
+		procedure AssertALUControl 
+			(instruction : std_logic_vector(DATA_WIDTH-1 downto 0)) is 
+			variable alu_operation : alu_operation_t;
+			variable opcode, func : std_logic_vector(5 downto 0);
 		begin
-			assert pc_write_out = false
-				report "pc_write_out should be false when in fetch state"
-				severity failure;
-			assert reg_write_out = false
-				report "reg_write_out should be false when in fetch state"
-				severity failure;
-			assert mem_write_out = false
-				report "mem_write_out should be false when in fetch state"
-				severity failure;
+			opcode := instruction(DATA_WIDTH-1 downto DATA_WIDTH-6);
+			func := instruction(5 downto 0);
+
+			if opcode = "000000" then
+				-- R-Type instruction
+				case func is
+					when FUNC_ADD =>
+						alu_operation := ALU_ADD;
+					when FUNC_SUB =>
+						alu_operation := ALU_SUB;
+					when FUNC_AND =>
+						alu_operation := ALU_AND;
+					when FUNC_OR =>
+						alu_operation := ALU_OR;
+					when FUNC_SLT =>
+						alu_operation := ALU_SLT;
+					when FUNC_SLL =>
+						alu_operation := ALU_SLL;
+				end case;
+				
+				assert alu_control_out = alu_operation
+					report "EX stage, R-Type: ALU Control does not match instruction"
+					severity failure;
+
+			else
+				-- I-Type instruction
+				case opcode is
+					when OPCODE_ADDI =>
+						alu_operation := ALU_ADD;
+					when OPCODE_ANDI =>
+						alu_operation := ALU_AND;
+					when OPCODE_ORI =>
+						alu_operation := ALU_OR;
+					when OPCODE_SLTI =>
+						alu_operation := ALU_SLT;
+					when OPCODE_LUI =>
+						alu_operation := ALU_SLL;
+				end case;
+				
+				assert alu_control_out = alu_operation
+					report "EX stage, I-Type: ALU Control does not match instruction"
+					severity failure;
+			end if;
+
+		end AssertALUControl;
+
+
+
+
+		procedure AssertDecodeStage is
+		begin
 			assert read_reg_1_out = instruction_in(25 downto 21)
 				report "read_reg_1_out should be instruction_in[25-21]"
 				severity failure;
 			assert read_reg_2_out = instruction_in(20 downto 16)
 				report "read_reg_2_out should be instruction[20-16]"
 				severity failure;
-		end AssertFetchState;
+		end AssertDecodeStage;
 
 
-		procedure AssertExecuteState is
+
+
+		procedure AssertExecuteStage
+			(instruction : std_logic_vector(DATA_WIDTH-1 downto 0)) is
+			variable opcode : std_logic_vector(5 downto 0) := (others => '0');
 		begin
-			if instruction_in(31) = '0' then
-				assert pc_write_out = true
-					report "pc_write_out should be true in execute state"
+						
+			opcode := instruction(DATA_WIDTH-1 downto DATA_WIDTH-6);
+
+			-- R-Type
+			if opcode = "000000" then
+			
+				-- Jump 
+				assert jump_out = false
+					report "EX stage, R-Type: jump out should be '0'"
 					severity failure;
-			else
-				assert pc_write_out = false
-					report "pc_write_out should be false in execute state"
+			
+				-- ALU src
+				assert alu_src_out = ALU_SRC_REGISTER
+					report "EX stage, R-Type: alu_src_out should be '0' to select register rt instead of immediate value"
 					severity failure;
-			end if;
-		end AssertExecuteState;
+				
+				-- SHAMT should always be put through on R type instruction
+				assert alu_shamt_out = instruction_in(10 downto 6)
+					report "EX stage R-Type: alu_shamt_out should always be put through on R type instructions"
+					severity failure;
+					
+				-- Assert ALU control signal
+				AssertALUControl(instruction);
+
+			-- Jump 
+			elsif opcode(5 downto 1) = "0001" then
+				assert jump_out = true
+					report "EX stage, J: jump out should be '1'"
+					severity failure;
+					
+			-- BEQ
+			elsif opcode(5 downto 2) = "001" then
+			
+				-- Jump 
+				assert jump_out = false
+					report "EX stage, BEQ: jump out should be '0'"
+					severity failure;
+			
+				-- ALU src
+				assert alu_src_out = ALU_SRC_REGISTER
+					report "EX stage, BEQ: alu_src_out should be '0' to select register rt instead of immediate value"
+					severity failure;
+					
+				-- ALU operation ALU_SUB
+				assert alu_control_out = ALU_SUB
+					report "EX stage, BEQ: alu_control_out should be ALU_SUB for BEQ instruction to compare registers rs and rt"
+					severity failure;
+					
+					
+			-- I-Type
+			elsif opcode(5 downto 3) = "01" then
+			
+				-- Jump 
+				assert jump_out = false
+					report "EX stage, I-Type: jump out should be '0'"
+					severity failure;
+			
+				-- LUI shamt
+				if opcode = OPCODE_LUI then
+					assert unsigned(alu_shamt_out) = 16
+						report "EX stage I-Type: alu_shamt_out should be 16 for LUI instruction"
+						severity failure;
+				end if;
+			
+				-- ALU src
+				assert alu_src_out = ALU_SRC_IMMEDIATE
+					report "EX stage, I-Type: alu_src_out should be '1' to select immediate value instead of register rt"
+					severity failure;
+					
+				-- Assert ALU control signal
+				AssertALUControl(instruction);
+			
+
+			-- LW
+			elsif opcode = "100011" then
+			
+				-- Jump 
+				assert jump_out = false
+					report "EX stage, LW: jump out should be '0'"
+					severity failure;
+
+				-- ALU should be rs + imm
+				assert alu_src_out = ALU_SRC_IMMEDIATE
+					report "EX stage, LW: alu_src_out should be '1' for LW instruction to select immediate value for the ALU"
+					severity failure;
+
+				-- ALU control should be ADD
+				assert alu_control_out = ALU_ADD
+					report "EX stage, LW: alu_contorl_out should be ALU_ADD for LW instruction"
+					severity failure;
 
 
-		procedure AssertStallState is
+			-- SW
+			elsif opcode = "101011" then
+				
+				-- Jump 
+				assert jump_out = false
+					report "EX stage, SW: jump out should be '0'"
+					severity failure;
+				
+				-- ALU should be rs + imm
+				assert alu_src_out = ALU_SRC_IMMEDIATE
+					report "EX stage, SW: alu_src_out should be '1' for SW instruction to select immediate value for the ALU"
+					severity failure;
+
+				-- ALU control should be ADD
+				assert alu_control_out = ALU_ADD
+					report "EX stage, LW: alu_contorl_out should be ALU_ADD for LW instruction"
+					severity failure;
+	
+			end if;	
+		end AssertExecuteStage;
+		
+
+
+
+		procedure AssertMemStage
+			(instruction : std_logic_vector(DATA_WIDTH-1 downto 0)) is
+			variable opcode : std_logic_vector(5 downto 0) := (others => '0');
 		begin
-			assert pc_write_out = true
-				report "pc_write_out should be true in stall state"
-				severity failure;
-		end AssertStallState; 
+						
+			opcode := instruction(DATA_WIDTH-1 downto DATA_WIDTH-6);
 
+			-- Pipeline is not yet filled
+			if instruction = INSTR_NONE then
+				-- Branch 
+				assert branch_out = false
+					report "MEM stage, No instruction: branch_out should be '0'"
+					severity failure;
+				
+				-- Mem Write
+				assert mem_write_out = false
+					report "MEM stage, No instruction: mem_write_out should be '0'"
+					severity failure;
 
-		procedure AssertALUInstruction(
-			alu_operation : alu_operation_t) is
+			-- R-Type
+			elsif opcode = "000000" then
+			
+				-- Branch 
+				assert branch_out = false
+					report "MEM stage, R-Type: branch_out should be '0'"
+					severity failure;
+				
+				-- Mem Write
+				assert mem_write_out = false
+					report "MEM stage, R-Type: mem_write_out should be '0'"
+					severity failure;
+
+			-- Jump 
+			elsif opcode(5 downto 1) = "0001" then
+				
+			-- BEQ
+			elsif opcode(5 downto 2) = "001" then
+					
+				-- Branch
+				assert branch_out = true
+					report "MEM stage, BEQ: branch_out should be '1'"
+					severity failure; 
+				
+				-- Mem Write				
+				assert mem_write_out = false
+					report "MEM stage, BEQ: mem_write_out should be '0'"
+					severity failure;
+					
+					
+			-- I-Type
+			elsif opcode(5 downto 3) = "01" then
+
+				-- Branch 
+				assert branch_out = false
+					report "MEM stage, I-Type: branch_out should be '0'"
+					severity failure;
+				
+				-- Mem Write
+				assert mem_write_out = false
+					report "MEM stage, I-Type: mem_write_out should be '0'"
+					severity failure;
+
+			
+			-- LW
+			elsif opcode = "100011" then
+				
+				-- Branch 
+				assert branch_out = false
+					report "MEM stage, LW: branch_out should be '0'"
+					severity failure;
+				
+				-- Mem Write
+				assert mem_write_out = false
+					report "MEM stage, LW: mem_write_out should be '0'"
+					severity failure;
+
+			-- SW
+			elsif opcode = "101011" then
+				
+				-- Branch 
+				assert branch_out = false
+					report "MEM stage, SW: branch_out should be '0'"
+					severity failure;
+				
+				-- Mem Write
+				assert mem_write_out = true
+					report "MEM stage, SW: mem_write_out should be '1'"
+					severity failure;
+
+			end if;	
+		end AssertMemStage;
+		
+	
+
+		procedure AssertWriteBackStage
+			(instruction : std_logic_vector(DATA_WIDTH-1 downto 0)) is
+			variable opcode : std_logic_vector(5 downto 0) := (others => '0');
 		begin
-			-- Reg write enable
-			assert reg_write_out = true
-				report "reg_write_out should be true to write back data from ALU result"
-				severity failure;
-
-			-- ALU operation
-			assert alu_control_out = alu_operation
-				report "alu_control_out is not set according to instruction"
-				severity failure;
-
-			-- MemToReg
-			assert reg_src_out = REG_SRC_ALU
-				report "reg_src_out should be alu to write back data from ALU result"
-				severity failure;
-		 
-			-- Branch signal should not be set
-			assert branch_out = false
-				report "branch_out should be false for writeback instructions"
-				severity failure;
-
-			-- Jump signal should not be set
-			assert jump_out = false
-				report "jump_out should be false for writeback instructions"
-				severity failure;
-
-		end AssertALUInstruction;
+						
+			opcode := instruction(DATA_WIDTH-1 downto DATA_WIDTH-6);
+			
 
 
-		procedure AssertRTypeInstruction is
+			-- Pipeline is not yet filled
+			if instruction = INSTR_NONE then
+				-- Reg Write
+				assert reg_write_out = false
+					report "WB stage, No instruction: reg_write_out should be '0'"
+					severity failure;
+
+			-- R-Type
+			elsif opcode = "000000" then
+				
+				-- Write Reg
+				assert write_reg_out = instruction(15 downto 11)
+					report "WB stage, R-Type: write_reg_out should be instruction_in[15-11] for R type instruction"
+					severity failure;
+
+				-- Reg Write
+				assert reg_write_out = true
+					report "WB stage, R-Type: reg_write_out should be '1'"
+					severity failure;
+				
+				-- Mem to Reg
+				assert reg_src_out = REG_SRC_ALU
+					report "WB stage, R-Type: mem_to_reg_out should be '0'"
+					severity failure;
+					
+			-- Jump TODO 
+			elsif opcode(5 downto 1) = "0001" then
+				
+			-- BEQ
+			elsif opcode(5 downto 2) = "001" then
+				
+				-- Reg Write
+				assert reg_write_out = false
+					report "WB stage, BEQ: reg_write_out should be '1'"
+					severity failure;
+					
+			-- I-Type
+			elsif opcode(5 downto 3) = "01" then
+				
+				-- Reg dst
+				assert write_reg_out = instruction(20 downto 16)
+					report "WB stage, I-Type: write_reg_out should be instruction_in[20-16] for I-Type instruction"
+					severity failure;
+
+				-- Reg Write
+				assert reg_write_out = true
+					report "WB stage, I-Type: reg_write_out should be '1'"
+					severity failure;
+				
+				-- Mem to Reg
+				assert reg_src_out = REG_SRC_ALU
+					report "WB stage, I-Type: mem_to_reg_out should be '0'"
+					severity failure;
+
+			-- LW
+			elsif opcode = "100011" then
+				
+				-- Reg dst
+				assert write_reg_out = instruction(20 downto 16)
+					report "WB stage, LW: write_reg_out should be instruction_in[20-16] for LW instruction"
+					severity failure;
+
+				-- Reg Write
+				assert reg_write_out = true
+					report "WB stage, LW: reg_write_out should be '1'"
+					severity failure;
+				
+				-- Mem to Reg
+				assert reg_src_out = REG_SRC_MEMORY
+					report "WB stage, LW: mem_to_reg_out should be '1'"
+					severity failure;
+
+			-- SW
+			elsif opcode = "101011" then
+								
+				-- Reg Write
+				assert reg_write_out = false
+					report "WB stage, SW: reg_write_out should be '0'"
+					severity failure;
+
+			end if;	
+		end AssertWriteBackStage;
+
+
+		procedure AssertPipelineStages (
+				ex  : std_logic_vector(DATA_WIDTH-1 downto 0);
+				mem : std_logic_vector(DATA_WIDTH-1 downto 0);
+				wb  : std_logic_vector(DATA_WIDTH-1 downto 0)
+			) is
 		begin
-			-- Write reg 
-			assert write_reg_out = instruction_in(15 downto 11)
-				report "write_reg_out should be instruction_in[15-11] for R type instruction"
-				severity failure;
+			AssertExecuteStage(ex);
+			AssertMemStage(mem);
+			AssertWriteBackStage(wb);
+		end AssertPipelineStages;
 
 
-			-- ALU src
-			assert alu_src_out = ALU_SRC_REGISTER
-				report "alu_src_out should be '0' to select register rt instead of immediate value"
-				severity failure;
 
-			-- SHAMT should always be put through on R type instruction
-			assert alu_shamt_out = instruction_in(10 downto 6)
-				report "alu_shamt_out should always be put through on R type instructions"
-				severity failure;
-		end AssertRTypeInstruction;
-
-
-		procedure AssertITypeInstruction is
+		procedure InsertInstruction
+			(instruction : std_logic_vector(DATA_WIDTH-1 downto 0)) is
 		begin
-			assert write_reg_out = instruction_in(20 downto 16)
-				report "write_reg_out should be instruction_in[20-16] for I type instruction"
-				severity failure;
-			-- ALU src
-			assert alu_src_out = ALU_SRC_IMMEDIATE
-				report "alu_src_out should be '1' to select immediate value instead of register rt"
-				severity failure;
-		end AssertITypeInstruction;
+			instruction_in <= instruction;
+			wait for clk_period;
+			AssertDecodeStage;
+			AssertExecutestage(tb_execute_instruction);
+			AssertMemStage(tb_mem_instruction);
+			AssertWriteBackStage(tb_writeback_instruction);
+			
+			tb_writeback_instruction <= tb_mem_instruction;
+			tb_mem_instruction <= tb_execute_instruction;
+			tb_execute_instruction <= instruction;
+	
+		end InsertInstruction;
+
 
 
 	begin
@@ -217,346 +543,43 @@ BEGIN
 		reset <= '1';
 		wait for 100 ns;
 		reset <= '0';
-
-		-- Processor starts after first clock tick
-		wait for clk_period;
-
-		-- Control should be in fetch state
-		AssertFetchState;
-
-		--- LOAD instruction ---
-		report "Testing LOAD instruction";
-		instruction_in <= INSTR_LOAD;
-		wait for clk_period;
-
-		-- Control should now be in execute state
-		AssertExecuteState;
-
-		-- Branch signal should not be set
-		assert branch_out = false
-			report "branch_out should be false for LOAD instructions"
-			severity failure;
-
-		-- Jump signal should not be set
-		assert jump_out = false
-			report "jump_out should be false for LOAD instructions"
-			severity failure;
-
-		-- Check signals for load instruction
-		assert reg_write_out = false
-			report "reg_write_out should be false for LOAD instruction"
-			severity failure;
-
-		-- ALU should be rs + imm
-		assert alu_src_out = ALU_SRC_IMMEDIATE
-			report "alu_src_out should be immediate for LOAD instruction to select immediate value for the ALU"
-			severity failure;
-
-		-- ALU control should be ADD
-		assert alu_control_out = ALU_ADD
-			report "alu_contorl_out should be ALU_ADD for LOAD instruction"
-			severity failure;
-
-		-- Mem Write should be off, since we are not writing any new values 
-		assert mem_write_out = false
-			report "mem_write_out should be false for LOAD instruction to prevent writing to data memory"
-			severity failure;
-
-
-		-- Wait a clock cycle
-		wait for clk_period;
-
-
-		-- Should now be in stall state
-		AssertStallState;
-
-		-- Mem to reg enable
-		assert reg_src_out = REG_SRC_MEMORY
-			report "reg_src_out should be memory for LOAD instruction in stall state to write the correct value in the register"
-			severity failure;
-
-		-- Reg write enable
-		assert reg_write_out = true
-			report "reg_write_out should be true for LOAD instruction in stall state to write the value in the register"
-			severity failure;
-
-			assert write_reg_out = instruction_in(20 downto 16)
-				report "write_reg_out should be instruction_in[20-16] for LOAD instruction"
-				severity failure;
-
-		-- Mem write disable
-		assert mem_write_out = false
-			report "mem_write_out should be false for LOAD instruction in stall state to prevent writing to data memory"
-		severity failure;
-
-		--- Done with LOAD instruction
-		report "LOAD instruction passed";
-
-
-		wait for clk_period;
-
-
-		--- Test STORE instruction
-		report "Testing STORE instruction";
-
-		-- Should now be in fetch state
-		AssertFetchState;
-
-
-		-- Instruction from memory changes to a STORE instruction
-		instruction_in <= INSTR_STORE;
-
-		wait for clk_period;
-
-		-- Should now be in execute state
-		AssertExecuteState;
-
-		-- Branch signal should not be set
-		assert branch_out = false
-			report "branch_out should be false for STORE instructions"
-			severity failure;
-
-		-- Jump signal should not be set
-		assert jump_out = false
-			report "jump_out should be false for STORE instructions"
-			severity failure;
-
-		-- Check signals for STORE instruction
-		assert reg_write_out = false
-			report "reg_write_out should be false for STORE instruction"
-			severity failure;
-
-		-- ALU should be rs + imm
-		assert alu_src_out = ALU_SRC_IMMEDIATE
-			report "alu_src_out should be immediate for STORE instruction to select immediate value for the ALU"
-			severity failure;
-
-		-- ALU control should be ADD
-		assert alu_control_out = ALU_ADD
-			report "alu_control_out should be ALU_ADD for STORE instruction"
-			severity failure;
-
-
-		wait for clk_period;
-
-		-- Should now be in stall state
-		AssertStallState;
-
-		-- Reg write should still be 0
-		assert reg_write_out = false
-			report "reg_write_out should be false for STORE instruction in stall state"
-			severity failure;
-
-		-- Mem write should still be 1
-		assert mem_write_out = true
-			report "mem_write_out should be true for STORE instruction in stall state"
-			severity failure;
-
-		-- Done with STORE instruction
-		report "STORE instruction passed";
-
-
-		wait for clk_period;
-
-		-- instruction_in should now change
-		instruction_in <= INSTR_ADD;
-
-
-		--- Testing R type and I type instructions ---
-
-		--- ADD (R type) ---
-		-- set instruction and wait for clk_period already done
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertRTypeInstruction;
-		AssertALUInstruction(ALU_ADD);
-		report "ADD instruction passed";
-
-
-		--- ADDI (I type) ---
-		instruction_in <= INSTR_ADDI;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertITypeInstruction;
-		AssertALUInstruction(ALU_ADD);
-		report "ADDI instruction passed";
-
-
-		--- SUB (R type) ---
-		instruction_in <= INSTR_SUB;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertRTypeInstruction;
-		AssertALUInstruction(ALU_SUB);
-		report "SUB instruction passed";
-
-
-		--- AND (R type) ---
-		instruction_in <= INSTR_AND;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertRTypeInstruction;
-		AssertALUInstruction(ALU_AND);
-		report "AND instruction passed";
-
-
-		--- ANDI (I type) ---
-		instruction_in <= INSTR_ANDI;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertITypeInstruction;
-		AssertALUInstruction(ALU_AND);
-		report "ANDI instruction passed";
-
-
-		--- OR (R type) ---
-		instruction_in <= INSTR_OR;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertRTypeInstruction;
-		AssertALUInstruction(ALU_OR);
-		report "OR instruction passed";
-
-
-		--- ORI (I type) ---
-		instruction_in <= INSTR_ORI;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertITypeInstruction;
-		AssertALUInstruction(ALU_OR);
-		report "ORI instruction passed";
-
-
-		--- SLT (R type) ---
-		instruction_in <= INSTR_SLT;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertRTypeInstruction;
-		AssertALUInstruction(ALU_SLT);
-		report "SLT instruction passed";
-
-
-		--- SLTI (I type) ---
-		instruction_in <= INSTR_SLTI;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertITypeInstruction;
-		AssertALUInstruction(ALU_SLT);
-		report "SLTI instruction passed";
-
-
-		--- SLL (R type) ---
-		instruction_in <= INSTR_SLL;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertRTypeInstruction;
-		report "SLL instruction passed";
-
-		--- LUI (I type) ---
-		instruction_in <= INSTR_LUI;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-		AssertITypeInstruction;
-		assert unsigned(alu_shamt_out) = 16
-			report "alu_shamt_out for LUI should be set to 16"
-			severity failure;
-		report "LUI instruction passed";
-
-
-		--- Test BEQ instruction ---
-		instruction_in <= INSTR_BEQ;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-
-		-- reg write 0
-		assert reg_write_out = false
-			report "reg_write_out should be false for BEQ instruction to prevent data from ALU or memory to be written to register"
-			severity failure;
-
-		-- ALU src 0
-		assert alu_src_out = ALU_SRC_REGISTER
-			report "alu_src_out should be register for BEQ instruction to select rt instead of immediate"
-			severity failure;
-
-		-- ALU operation ALU_SUB
-		assert alu_control_out = ALU_SUB
-			report "alu_control_out should be ALU_SUB for BEQ instruction to compare registers rs and rt"
-			severity failure;
-
-		-- mem write 0
-		assert mem_write_out = false
-			report "mem_write_out should be false for BEQ instruction to prevent data being written to memory"
-			severity failure;
-
-		-- branch enable
-		assert branch_out = true
-			report "branch_out should be true on BEQ instruction"
-			severity failure;
-
-		-- jump disable
-		assert jump_out = false
-			report "jump_out should be false on BEQ instruction"
-			severity failure;
-
-		-- Done with BEQ instruction
-		report "BEQ instruction passed";
-
-
-
-
-		--- Test J instruction (JUMP) ---
-		instruction_in <= INSTR_J;
-		wait for clk_period;
-		AssertFetchState;
-		wait for clk_period;
-		AssertExecuteState;
-
-		-- reg write 0
-		assert reg_write_out = false
-			report "reg_write_out should be false for J instruction to prevent data from ALU or memory to be written to register"
-			severity failure;
-
-		-- mem write 0
-		assert mem_write_out = false
-			report "mem_write_out should be false for J instruction to prevent data being written to memory"
-			severity failure;
-
-		-- branch enable
-		assert branch_out = false
-			report "branch_out should be false on J instruction"
-			severity failure;
-
-		-- jump disable
-		assert jump_out = true
-			report "jump_out should be true on J instruction"
-			severity failure;
-
-		report "J instruction passed";
-
-
+		
+		-- Set enable to 0 to disable the processor
+		enable <= '0';
+
+		-- Set some instruction as input
+		instruction_in <= INSTR_SW;
+
+		-- Wait a couple of clock cycles
+		wait for clk_period*10;
+		
+		-- Enable the processor again
+		enable <= '1';
+		
+		
+
+		-- Insert instructions
+		InsertInstruction(INSTR_LW);
+		InsertInstruction(INSTR_SW);
+		InsertInstruction(INSTR_BEQ);
+		InsertInstruction(INSTR_ADD);
+		InsertInstruction(INSTR_ADDI);
+		InsertInstruction(INSTR_SUB);
+		InsertInstruction(INSTR_AND);
+		InsertInstruction(INSTR_ANDI);
+		InsertInstruction(INSTR_OR);
+		InsertInstruction(INSTR_ORI);
+		InsertInstruction(INSTR_SLT);
+		InsertInstruction(INSTR_SLTI);
+		InsertInstruction(INSTR_SLL);
+		InsertInstruction(INSTR_LUI);
+		InsertInstruction(INSTR_J);
+
+		-- Insert ADD's to propagate the last instructions through the pipeline
+		InsertInstruction(INSTR_ADD);
+		InsertInstruction(INSTR_ADD);
+		InsertInstruction(INSTR_ADD);
+		
 		report "Test success";
 		wait;
 
