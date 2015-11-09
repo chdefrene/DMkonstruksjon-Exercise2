@@ -11,14 +11,25 @@ entity Control is
 		IMMEDIATE_WIDTH : integer := 16
 	);
 	port (
-		clk, reset, enable : in std_logic;
-		instruction_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
-		alu_shamt_out : out std_logic_vector(4 downto 0);
-		alu_control_out : out alu_operation_t;
-		read_reg_1_out, read_reg_2_out, write_reg_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
-		pc_write_out, branch_out, jump_out, reg_write_out, mem_write_out : out boolean;
-		reg_src_out : out reg_src_t;
-		alu_src_out : out alu_src_t
+		clk, reset, enable 	: in std_logic;									-- Control signals
+		instruction_in 		: in std_logic_vector(DATA_WIDTH-1 downto 0);	-- FROM INSTR
+		alu_shamt_out,														-- Shift amount
+		reg_dst_out 		: out std_logic_vector(4 downto 0);				-- RegDst (EX)
+		alu_control_out 	: out alu_operation_t;							-- To ALU
+		read_reg_1_out, 													-- rs
+		read_reg_2_out, 													-- rt
+		write_reg_out,														-- RegWrite (WB)
+		mem_read_out,														-- MemRead (M)
+		mem_write_out		: out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);	-- MemWrite (M)
+		alu_op_out			: out std_logic_vector(6 downto 0);				-- ALUOp (EX)
+		pc_write_out, 														-- PCSrc
+		branch_out, 														-- Branch, not terminal (M)
+		jump_out, 															-- Jump
+		is_reg_write_out, 													
+		is_mem_write_out,														
+		alu_zero_in 		: out boolean;									-- Zero, not terminal
+		reg_src_out 		: out reg_src_t;								-- RegSrc (WB)
+		alu_src_out			: out alu_src_t									-- ALUSrc (EX)
 	);
 
 end Control;
@@ -33,7 +44,7 @@ architecture Behavioral of Control is
 	constant OP_JUMP : std_logic_vector := "000010";
 
 	-- State register for state machine
-	type control_state is (START, FETCH, EXECUTE, STALL);
+	type control_state is (START, IF, ID, EX, MEM, WB, STALL);
 	signal state : control_state;
 
 	-- Signals to make code simpler
@@ -86,20 +97,39 @@ begin
 	is_jump <= opcode = OP_JUMP;
 	is_branch <= opcode(4 downto 1) = "0010";
 	is_enabled <= enable = '1';
+	
+	-- Handle pipeline registers
+	process (clk, reset) is begin
+		if reset = '1' then
+			id_ex_alu_1 <= (others => '0');
+			id_ex_alu_2 <= (others => '0');
+			id_ex_immediate <= (others => '0');
+			ex_mem_write_data <= (others => '0');
+			ex_mem_alu_result <= (others => '0');
+			mem_wb_alu_result <= (others => '0');
+		elsif rising_edge(clk) then
+			id_ex_alu_1 <= register_file(to_integer(unsigned(read_reg_1_in)));
+			id_ex_alu_2 <= register_file(to_integer(unsigned(read_reg_2_in)));
+			id_ex_immediate <= std_logic_vector(resize(signed(immediate_in), DATA_WIDTH));
+			ex_mem_write_data <= id_ex_alu_2;
+			ex_mem_alu_result <= alu_result_in;
+			mem_wb_alu_result <= ex_mem_alu_result;
+		end if;
+	end process;
 
 
 	-- Set control signals
 	alu_src_out <= ALU_SRC_IMMEDIATE when is_i_type and not is_branch else ALU_SRC_REGISTER;
 	jump_out <= is_j_type;
 	branch_out <= is_branch;
-	mem_write_out <= is_store and state = STALL;
+	is_mem_write_out <= is_store and state = STALL;
 	reg_src_out <= REG_SRC_MEMORY when is_load else REG_SRC_ALU;
 
 	pc_write_out <= (
 				(state = EXECUTE and not is_load_store) or state = STALL
 			) and is_enabled;
 
-	reg_write_out <= (
+	is_reg_write_out <= (
 			state = EXECUTE and
 			not is_jump and
 			not is_branch and
