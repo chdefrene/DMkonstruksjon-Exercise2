@@ -59,6 +59,32 @@ architecture Behavioral of Control is
 	signal is_jump : boolean;
 	signal is_branch : boolean;
 	signal is_enabled : boolean;
+	
+	-- ID/EX registers
+	signal write_reg_out_1,
+	reg_src_out_1,
+	branch_out_1,
+	mem_read_out_1,
+	mem_write_out_1,
+	pc_write_out_1,
+	reg_dst_out_1,
+	alu_op_out_1,
+	alu_src_out_1,
+	alu_control_out_1 : std_logic_vector(DATA_WIDTH-1 downto 0);
+	
+	-- EX/MEM registers
+	signal write_reg_out_2,
+	reg_src_out_2,
+	branch_out_2,
+	mem_read_out_2,
+	mem_write_out_2,
+	pc_write_out_2 : std_logic_vector(DATA_WIDTH-1 downto 0);
+
+	-- MEM/WB registers
+	signal write_reg_out_3,
+	reg_src_out_3 : std_logic_vector(DATA_WIDTH-1 downto 0);
+			
+	
 
 begin
 
@@ -68,12 +94,19 @@ begin
 		if reset = '1' then
 			state <= START;
 		elsif rising_edge(clk) and is_enabled then
-			if state = FETCH then
-				state <= EXECUTE;
-			elsif state = EXECUTE and is_load_store then
-				state <= STALL;
+			-- If nothing should stall then
+				if state = IF then
+					state <= ID;
+				elsif state = ID then
+					state <= EX;
+				elsif state = EX then
+					state <= MEM;
+				elsif state = MEM then
+					state <= WB;
+				else
+					-- state <= state before stall ?
 			else
-				state <= FETCH;
+				state <= STALL;
 			end if;
 		end if;
 	end process;
@@ -101,19 +134,51 @@ begin
 	-- Handle pipeline registers
 	process (clk, reset) is begin
 		if reset = '1' then
-			id_ex_alu_1 <= (others => '0');
-			id_ex_alu_2 <= (others => '0');
-			id_ex_immediate <= (others => '0');
-			ex_mem_write_data <= (others => '0');
-			ex_mem_alu_result <= (others => '0');
-			mem_wb_alu_result <= (others => '0');
+		
+		
+			write_reg_out <= (others => '0');
+			reg_src_out <= (others => '0');
+
+			branch_out <= (others => '0');
+			mem_read_out <= (others => '0');
+			mem_write_out <= (others => '0');
+			pc_write_out <= (others => '0');
+
+			reg_dst_out <= (others => '0');
+			alu_op_out <= (others => '0');
+			alu_src_out <= (others => '0');
+			alu_control_out <= (others => '0');
+		
 		elsif rising_edge(clk) then
-			id_ex_alu_1 <= register_file(to_integer(unsigned(read_reg_1_in)));
-			id_ex_alu_2 <= register_file(to_integer(unsigned(read_reg_2_in)));
-			id_ex_immediate <= std_logic_vector(resize(signed(immediate_in), DATA_WIDTH));
-			ex_mem_write_data <= id_ex_alu_2;
-			ex_mem_alu_result <= alu_result_in;
-			mem_wb_alu_result <= ex_mem_alu_result;
+			-- IF/ID
+			-- Not used ?
+			
+			-- ID/EX
+			write_reg_out_1 <= write_reg_out
+			reg_src_out_1 <= reg_src_out
+
+			branch_out_1 <= branch_out
+			mem_read_out_1 <= mem_read_out
+			mem_write_out_1 <= mem_write_out
+			pc_write_out_1 <= pc_write_out
+
+			reg_dst_out_1 <= reg_dst_out
+			alu_op_out_1 <= alu_op_out
+			alu_src_out_1 <= alu_src_out
+			alu_control_out_1 <= alu_control_out
+			
+			-- EX/MEM
+			write_reg_out_2 <= write_reg_out_1;
+			reg_src_out_2 <= reg_src_out_1;
+
+			branch_out_2 <= branch_out_1;
+			mem_read_out_2 <= mem_read_out_1;
+			mem_write_out_2 <= mem_write_out_1;
+			pc_write_out_2 <= pc_write_out_1;
+		
+			-- MEM/WB
+			write_reg_out_3 <= write_reg_out_2;
+			reg_src_out_3 <= reg_src_out_2;
 		end if;
 	end process;
 
