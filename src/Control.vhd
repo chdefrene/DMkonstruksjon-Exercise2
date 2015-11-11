@@ -108,7 +108,7 @@ begin
 			ex_reg_write <= (not is_noop and
 				not is_jump and
 				not is_branch and
-				not is_load_store);
+				not is_store);
 			ex_mem_write <= is_store and not is_noop;
 			ex_write_reg <= write_reg;
 			ex_reg_src <= reg_src;
