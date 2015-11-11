@@ -11,25 +11,15 @@ entity Control is
 		IMMEDIATE_WIDTH : integer := 16
 	);
 	port (
-		clk, reset, enable 	: in std_logic;									-- Control signals
-		instruction_in 		: in std_logic_vector(DATA_WIDTH-1 downto 0);	-- FROM INSTR
-		alu_shamt_out,														-- Shift amount
-		reg_dst_out 		: out std_logic_vector(4 downto 0);				-- RegDst (EX)
-		alu_control_out 	: out alu_operation_t;							-- To ALU
-		read_reg_1_out, 													-- rs
-		read_reg_2_out, 													-- rt
-		write_reg_out,														-- RegWrite (WB)
-		mem_read_out,														-- MemRead (M)
-		mem_write_out		: out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);	-- MemWrite (M)
-		alu_op_out			: out std_logic_vector(6 downto 0);				-- ALUOp (EX)
-		pc_write_out, 														-- PCSrc
-		branch_out, 														-- Branch, not terminal (M)
-		jump_out, 															-- Jump
-		is_reg_write_out, 													
-		is_mem_write_out,														
-		alu_zero_in 		: out boolean;									-- Zero, not terminal
-		reg_src_out 		: out reg_src_t;								-- RegSrc (WB)
-		alu_src_out			: out alu_src_t									-- ALUSrc (EX)
+			clk, reset, enable : in std_logic;
+			noop_in, stall_in : in boolean;
+			instruction_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
+			alu_control_out : out alu_operation_t;
+			alu_shamt_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
+			read_reg_1_out, read_reg_2_out, write_reg_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
+			pc_write_out, branch_out, jump_out, reg_write_out, mem_write_out : out boolean;
+			reg_src_out : out reg_src_t;
+			alu_src_out : out alu_src_t
 	);
 
 end Control;
@@ -43,14 +33,13 @@ architecture Behavioral of Control is
 	constant OP_SLTI : std_logic_vector := "001010";
 	constant OP_JUMP : std_logic_vector := "000010";
 
-	-- State register for state machine
-	type control_state is (START, IF, ID, EX, MEM, WB, STALL);
-	signal state : control_state;
 
 	-- Signals to make code simpler
 	signal opcode, func : std_logic_vector (5 downto 0);
-	signal rs, rt, rd, shamt : std_logic_vector (4 downto 0);
-	signal func_op : alu_operation_t;
+	signal rs, rt, rd, shamt, write_reg, alu_shamt : std_logic_vector (4 downto 0);
+	signal func_op, alu_control : alu_operation_t;
+	signal reg_src : reg_src_t;
+	signal alu_src : alu_src_t;
 
 	signal is_i_type, is_j_type, is_r_type : boolean;
 	signal is_load_store : boolean;
@@ -61,56 +50,23 @@ architecture Behavioral of Control is
 	signal is_enabled : boolean;
 	
 	-- ID/EX registers
-	signal write_reg_out_1,
-	reg_src_out_1,
-	branch_out_1,
-	mem_read_out_1,
-	mem_write_out_1,
-	pc_write_out_1,
-	reg_dst_out_1,
-	alu_op_out_1,
-	alu_src_out_1,
-	alu_control_out_1 : std_logic_vector(DATA_WIDTH-1 downto 0);
+	signal ex_branch, ex_jump, ex_reg_write, ex_mem_write : boolean;
+	signal ex_write_reg, ex_alu_shamt : std_logic_vector(4 downto 0);
+	signal ex_reg_src : reg_src_t;
+	signal ex_alu_control : alu_operation_t;
+	signal ex_alu_src : alu_src_t;
 	
-	-- EX/MEM registers
-	signal write_reg_out_2,
-	reg_src_out_2,
-	branch_out_2,
-	mem_read_out_2,
-	mem_write_out_2,
-	pc_write_out_2 : std_logic_vector(DATA_WIDTH-1 downto 0);
-
-	-- MEM/WB registers
-	signal write_reg_out_3,
-	reg_src_out_3 : std_logic_vector(DATA_WIDTH-1 downto 0);
-			
+	-- EX/MEM
+	signal mem_reg_write, mem_mem_write : boolean;
+	signal mem_write_reg : std_logic_vector(4 downto 0);
+	signal mem_reg_src : reg_src_t;
 	
+	-- MEM/WB
+	signal wb_reg_write : boolean;
+	signal wb_write_reg : std_logic_vector(4 downto 0);
+	signal wb_reg_src : reg_src_t;
 
 begin
-
-	-- State machine updates
-	state_proc: process(clk, reset, is_enabled)
-	begin
-		if reset = '1' then
-			state <= START;
-		elsif rising_edge(clk) and is_enabled then
-			-- If nothing should stall then
-				if state = IF then
-					state <= ID;
-				elsif state = ID then
-					state <= EX;
-				elsif state = EX then
-					state <= MEM;
-				elsif state = MEM then
-					state <= WB;
-				else
-					-- state <= state before stall ?
-			else
-				state <= STALL;
-			end if;
-		end if;
-	end process;
-
 
 	-- Extract information from instruction
 	opcode <= instruction_in(31 downto 26);
@@ -134,81 +90,69 @@ begin
 	-- Handle pipeline registers
 	process (clk, reset) is begin
 		if reset = '1' then
-		
-		
-			write_reg_out <= (others => '0');
-			reg_src_out <= (others => '0');
-
-			branch_out <= (others => '0');
-			mem_read_out <= (others => '0');
-			mem_write_out <= (others => '0');
-			pc_write_out <= (others => '0');
-
-			reg_dst_out <= (others => '0');
-			alu_op_out <= (others => '0');
-			alu_src_out <= (others => '0');
-			alu_control_out <= (others => '0');
-		
-		elsif rising_edge(clk) then
-			-- IF/ID
-			-- Not used ?
-			
-			-- ID/EX
-			write_reg_out_1 <= write_reg_out
-			reg_src_out_1 <= reg_src_out
-
-			branch_out_1 <= branch_out
-			mem_read_out_1 <= mem_read_out
-			mem_write_out_1 <= mem_write_out
-			pc_write_out_1 <= pc_write_out
-
-			reg_dst_out_1 <= reg_dst_out
-			alu_op_out_1 <= alu_op_out
-			alu_src_out_1 <= alu_src_out
-			alu_control_out_1 <= alu_control_out
+			-- ID/EX registers
+			ex_branch <= false;
+			ex_jump <= false;
+			ex_reg_write <= false;
+			ex_mem_write <= false;
 			
 			-- EX/MEM
-			write_reg_out_2 <= write_reg_out_1;
-			reg_src_out_2 <= reg_src_out_1;
+			mem_reg_write <= false;
+			mem_mem_write <= false;
+			
+			-- MEM/WB
+			wb_reg_write <= false;
 
-			branch_out_2 <= branch_out_1;
-			mem_read_out_2 <= mem_read_out_1;
-			mem_write_out_2 <= mem_write_out_1;
-			pc_write_out_2 <= pc_write_out_1;
+		elsif rising_edge(clk) and is_enabled then
+			-- ID/EX
+			ex_branch <= is_branch;
+			ex_jump <= is_j_type;
+			ex_reg_write <= (not noop_in and
+				not is_jump and
+				not is_branch and
+				not is_load_store);
+			ex_mem_write <= is_store and not noop_in;
+			ex_write_reg <= write_reg;
+			ex_reg_src <= reg_src;
+			ex_alu_control <= alu_control;
+			ex_alu_src <= alu_src;
+			ex_alu_shamt <= alu_shamt;
+
+			-- EX/MEM
+			mem_reg_write <= ex_reg_write;
+			mem_mem_write <= ex_mem_write;
+			mem_write_reg <= ex_write_reg;
+			mem_reg_src <= ex_reg_src;
 		
 			-- MEM/WB
-			write_reg_out_3 <= write_reg_out_2;
-			reg_src_out_3 <= reg_src_out_2;
+			wb_reg_write <= mem_reg_write;
+			wb_write_reg <= mem_write_reg;
+			wb_reg_src <= mem_reg_src;
+
 		end if;
 	end process;
 
 
 	-- Set control signals
-	alu_src_out <= ALU_SRC_IMMEDIATE when is_i_type and not is_branch else ALU_SRC_REGISTER;
-	jump_out <= is_j_type;
-	branch_out <= is_branch;
-	is_mem_write_out <= is_store and state = STALL;
-	reg_src_out <= REG_SRC_MEMORY when is_load else REG_SRC_ALU;
-
-	pc_write_out <= (
-				(state = EXECUTE and not is_load_store) or state = STALL
-			) and is_enabled;
-
-	is_reg_write_out <= (
-			state = EXECUTE and
-			not is_jump and
-			not is_branch and
-			not is_load_store
-		) or (
-			state = STALL and is_load
-		);
+	pc_write_out <= not stall_in and is_enabled;
+	reg_src <= REG_SRC_MEMORY when is_load else REG_SRC_ALU;
+	alu_src <= ALU_SRC_IMMEDIATE when is_i_type and not is_branch else ALU_SRC_REGISTER;
 
 	-- Set register addresses
 	read_reg_1_out <= rs;
 	read_reg_2_out <= rt;
-	write_reg_out <= rt when is_i_type else rd;
+	write_reg <= rt when is_i_type else rd;
 
 	-- ALU function selection
+	alu_control <=
+			ALU_ADD when is_load_store or opcode(5 downto 1) = "00100" else -- ADDI and ADDIU
+			ALU_SUB when opcode(5 downto 1) = "00010" else -- BEQ and BNE
+			ALU_OR when opcode = OP_ORI else
+			ALU_AND when opcode = OP_ANDI else
+			ALU_SLT when opcode = OP_SLTI else
+			func_op when is_r_type else
+			ALU_SLL;
+
 	func_op <=
 		ALU_ADD when func(5 downto 1) = "10000" else
 		ALU_SUB when func(5 downto 1) = "10001" else
@@ -216,17 +160,18 @@ begin
 		ALU_OR when func = "100101" else
 		ALU_SLT when func = "101010" else
 		ALU_SLL;
-	
-	alu_control_out <=
-		ALU_ADD when is_load_store or opcode(5 downto 1) = "00100" else -- ADDI and ADDIU
-		ALU_SUB when opcode(5 downto 1) = "00010" else -- BEQ and BNE
-		ALU_OR when opcode = OP_ORI else
-		ALU_AND when opcode = OP_ANDI else
-		ALU_SLT when opcode = OP_SLTI else
-		func_op when is_r_type else
-		ALU_SLL;
-	
-	alu_shamt_out <= "10000" when opcode = OP_LUI else shamt;
 
+	alu_shamt <= "10000" when opcode = OP_LUI else shamt;
+
+	-- Output correct signals
+	alu_src_out <= ex_alu_src;
+	alu_control_out <= ex_alu_control;
+	alu_shamt_out <= ex_alu_shamt;
+	write_reg_out <= wb_write_reg;
+	branch_out <= ex_branch;
+	jump_out <= ex_jump;
+	reg_write_out <= wb_reg_write;
+	mem_write_out <= mem_mem_write;
+	reg_src_out <= ex_reg_src;
 
 end Behavioral;
