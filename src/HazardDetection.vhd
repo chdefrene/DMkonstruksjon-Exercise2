@@ -21,7 +21,7 @@ begin
 	ld_hazard <= ((if_id_read_reg_1_in = id_ex_write_reg_in) or (if_id_read_reg_2_in = id_ex_write_reg_in)) and 
 		id_ex_reg_src_in = REG_SRC_MEMORY and id_ex_reg_write_in;
 
-	stall_out <= ld_hazard or id_ex_branch_in or id_ex_jump_in;
-	noop_out <= ld_hazard or id_ex_branch_in;
+	noop_out <= ld_hazard or id_ex_branch_in or id_ex_jump_in;
+	stall_out <= ld_hazard or id_ex_branch_in;
 
 end Behavioral;
