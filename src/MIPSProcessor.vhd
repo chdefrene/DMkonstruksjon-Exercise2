@@ -31,7 +31,7 @@ end MIPSProcessor;
 
 architecture Behavioral of MIPSProcessor is
 
-	signal alu_1, alu_2, fwd_alu_1, fwd_alu_2, alu_result : std_logic_vector(DATA_WIDTH-1 downto 0);
+	signal alu_1, alu_2, fwd_alu_1, fwd_alu_2, alu_result, mem_addr : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal alu_control : alu_operation_t;
 	signal alu_zero, reg_write, fwd_reg_write, jump, branch,
 		pc_write, mem_write, hd_jump, hd_reg_write, noop, stall : boolean;
@@ -55,7 +55,8 @@ begin
 			reg_src_in => reg_src,
 			alu_1_out => fwd_alu_1,
 			alu_2_out => fwd_alu_2,
-			write_data_out => dmem_data_out
+			write_data_out => dmem_data_out,
+			mem_addr_out => mem_addr
 		);
 		
 	control_flow : entity work.ControlFlow port map (
@@ -139,7 +140,7 @@ begin
 		noop_out => noop
 	);
 
-	dmem_address <= alu_result(ADDR_WIDTH-1 downto 0);
+	dmem_address <= mem_addr(ADDR_WIDTH-1 downto 0);
 	dmem_write_enable <= '1' when mem_write else '0';
 
 end Behavioral;
