@@ -44,6 +44,9 @@ architecture Behavioral of Control is
 
 	signal is_i_type, is_j_type, is_r_type, is_load_store, is_load,
 		is_store,is_jump,is_branch, is_enabled, is_noop, is_stall : boolean;
+		
+	-- To make sure instruction is valid
+	signal valid_instruction : boolean;
 	
 	-- ID/EX registers
 	signal ex_branch, ex_jump, ex_reg_write, ex_mem_write : boolean;
@@ -82,12 +85,14 @@ begin
 	is_jump <= opcode = OP_JUMP;
 	is_branch <= opcode(4 downto 1) = "0010";
 	is_enabled <= enable = '1';
-	is_noop <= noop_in or not is_enabled;
+	is_noop <= noop_in or not is_enabled or not valid_instruction;
 	is_stall <= stall_in or not is_enabled;
 	
 	-- Handle pipeline registers
 	process (clk, reset) is begin
 		if reset = '1' then
+			valid_instruction <= false;
+
 			-- ID/EX registers
 			ex_branch <= false;
 			ex_jump <= false;
@@ -102,6 +107,8 @@ begin
 			wb_reg_write <= false;
 
 		elsif rising_edge(clk) then
+			valid_instruction <= valid_instruction or is_enabled;
+			
 			-- ID/EX
 			ex_branch <= is_branch and not is_noop;
 			ex_jump <= is_j_type and not is_noop;
