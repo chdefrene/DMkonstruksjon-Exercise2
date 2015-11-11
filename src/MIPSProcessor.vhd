@@ -92,7 +92,9 @@ begin
 			hd_jump_out => hd_jump,
 			hd_write_reg_out => hd_write_reg,
 			hd_reg_write_out => hd_reg_write,
-			hd_reg_src_out => hd_reg_src
+			hd_reg_src_out => hd_reg_src,
+			fwd_write_reg_out => fwd_write_reg,
+			fwd_reg_write_out => fwd_reg_write
 		);
 
 	alu : entity work.ALU port map (
@@ -112,7 +114,7 @@ begin
 			read_reg_in => read_reg_1,
 			write_reg_in => fwd_write_reg,
 			alu_in => fwd_alu_1,
-			alu_result_in => alu_result,
+			alu_result_in => mem_addr,
 			read_data_in => dmem_data_in,
 			alu_out => alu_1
 		);
@@ -123,7 +125,7 @@ begin
 			read_reg_in => read_reg_2,
 			write_reg_in => fwd_write_reg,
 			alu_in => fwd_alu_2,
-			alu_result_in => alu_result,
+			alu_result_in => mem_addr,
 			read_data_in => dmem_data_in,
 			alu_out => alu_2
 		);
