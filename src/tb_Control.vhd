@@ -27,8 +27,8 @@ ARCHITECTURE behavior OF tb_Control IS
 			instruction_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 			alu_control_out : out alu_operation_t;
 			alu_shamt_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
-			read_reg_1_out, read_reg_2_out, write_reg_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
-			pc_write_out, branch_out, jump_out, reg_write_out, mem_write_out : out boolean;
+			read_reg_1_out, read_reg_2_out, write_reg_out, fwd_write_reg_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
+			pc_write_out, branch_out, jump_out, reg_write_out, fwd_reg_write_out, mem_write_out : out boolean;
 			reg_src_out : out reg_src_t;
 			alu_src_out : out alu_src_t
 		);
@@ -196,9 +196,11 @@ BEGIN
 			assert read_reg_1_out = instruction_in(25 downto 21)
 				report "read_reg_1_out should be instruction_in[25-21]"
 				severity failure;
-			assert read_reg_2_out = instruction_in(20 downto 16)
-				report "read_reg_2_out should be instruction[20-16]"
-				severity failure;
+			if instruction_in(DATA_WIDTH-1 downto DATA_WIDTH-2) = "00" then
+				assert read_reg_2_out = instruction_in(20 downto 16)
+					report "read_reg_2_out should be instruction[20-16]"
+					severity failure;
+			end if;
 		end AssertDecodeStage;
 
 
@@ -237,7 +239,7 @@ BEGIN
 				assert jump_out = true
 					report "EX stage, J: jump out should be '1'"
 					severity failure;
-					
+
 			-- BEQ
 			elsif opcode(5 downto 2) = "001" then
 			
