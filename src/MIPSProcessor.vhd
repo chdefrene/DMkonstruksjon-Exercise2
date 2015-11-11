@@ -31,11 +31,11 @@ end MIPSProcessor;
 
 architecture Behavioral of MIPSProcessor is
 
-	signal alu_1, alu_2, alu_result : std_logic_vector(DATA_WIDTH-1 downto 0);
+	signal alu_1, alu_2, fwd_alu_1, fwd_alu_2, alu_result : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal alu_control : alu_operation_t;
-	signal alu_zero, reg_write, jump, branch, pc_write, mem_write : boolean;
+	signal alu_zero, reg_write, fwd_reg_write, jump, branch, pc_write, mem_write : boolean;
 	signal reg_src : reg_src_t;
-	signal alu_shamt, read_reg_1, read_reg_2, write_reg : std_logic_vector(4 downto 0);
+	signal alu_shamt, read_reg_1, read_reg_2, write_reg, fwd_write_reg : std_logic_vector(4 downto 0);
 	signal alu_src : alu_src_t;
 
 begin
@@ -52,8 +52,8 @@ begin
 			reg_write_in => reg_write,
 			alu_src_in => alu_src,
 			reg_src_in => reg_src,
-			alu_1_out => alu_1,
-			alu_2_out => alu_2,
+			alu_1_out => fwd_alu_1,
+			alu_2_out => fwd_alu_2,
 			write_data_out => dmem_data_out
 		);
 		
@@ -70,6 +70,8 @@ begin
 		
 	control : entity work.Control port map (
 			clk => clk,
+			noop_in => false, --TODO
+			stall_in => false, --TODO
 			reset => reset,
 			enable => processor_enable,
 			instruction_in => imem_data_in,
@@ -95,6 +97,29 @@ begin
 			shamt_in => alu_shamt,
 			result_out => alu_result,
 			zero_out => alu_zero
+		);
+
+	-- Forwarding units - one for each alu input
+	forward_1: entity work.Forward port map (
+			clk => clk,
+			reg_write_in => fwd_reg_write,
+			read_reg_in => read_reg_1,
+			write_reg_in => fwd_write_reg,
+			alu_in => fwd_alu_1,
+			alu_result_in => alu_result,
+			read_data_in => dmem_data_in,
+			alu_out => alu_1
+		);
+
+	forward_2: entity work.Forward port map (
+			clk => clk,
+			reg_write_in => fwd_reg_write,
+			read_reg_in => read_reg_2,
+			write_reg_in => fwd_write_reg,
+			alu_in => fwd_alu_2,
+			alu_result_in => alu_result,
+			read_data_in => dmem_data_in,
+			alu_out => alu_2
 		);
 
 	dmem_address <= alu_result(ADDR_WIDTH-1 downto 0);

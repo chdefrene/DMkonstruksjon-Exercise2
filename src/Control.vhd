@@ -16,8 +16,8 @@ entity Control is
 			instruction_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 			alu_control_out : out alu_operation_t;
 			alu_shamt_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
-			read_reg_1_out, read_reg_2_out, write_reg_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
-			pc_write_out, branch_out, jump_out, reg_write_out, mem_write_out : out boolean;
+			read_reg_1_out, read_reg_2_out, write_reg_out, fwd_write_reg_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
+			pc_write_out, branch_out, jump_out, reg_write_out, fwd_reg_write_out, mem_write_out : out boolean;
 			reg_src_out : out reg_src_t;
 			alu_src_out : out alu_src_t
 	);
@@ -41,13 +41,8 @@ architecture Behavioral of Control is
 	signal reg_src : reg_src_t;
 	signal alu_src : alu_src_t;
 
-	signal is_i_type, is_j_type, is_r_type : boolean;
-	signal is_load_store : boolean;
-	signal is_load : boolean;
-	signal is_store : boolean;
-	signal is_jump : boolean;
-	signal is_branch : boolean;
-	signal is_enabled : boolean;
+	signal is_i_type, is_j_type, is_r_type, is_load_store, is_load,
+		is_store,is_jump,is_branch, is_enabled, is_noop, is_stall : boolean;
 	
 	-- ID/EX registers
 	signal ex_branch, ex_jump, ex_reg_write, ex_mem_write : boolean;
@@ -86,6 +81,8 @@ begin
 	is_jump <= opcode = OP_JUMP;
 	is_branch <= opcode(4 downto 1) = "0010";
 	is_enabled <= enable = '1';
+	is_noop <= noop_in or not is_enabled;
+	is_stall <= stall_in or not is_enabled;
 	
 	-- Handle pipeline registers
 	process (clk, reset) is begin
@@ -103,15 +100,15 @@ begin
 			-- MEM/WB
 			wb_reg_write <= false;
 
-		elsif rising_edge(clk) and is_enabled then
+		elsif rising_edge(clk) then
 			-- ID/EX
 			ex_branch <= is_branch;
 			ex_jump <= is_j_type;
-			ex_reg_write <= (not noop_in and
+			ex_reg_write <= (not is_noop and
 				not is_jump and
 				not is_branch and
 				not is_load_store);
-			ex_mem_write <= is_store and not noop_in;
+			ex_mem_write <= is_store and not is_noop;
 			ex_write_reg <= write_reg;
 			ex_reg_src <= reg_src;
 			ex_alu_control <= alu_control;
@@ -134,13 +131,13 @@ begin
 
 
 	-- Set control signals
-	pc_write_out <= not stall_in and is_enabled;
+	pc_write_out <= not is_stall;
 	reg_src <= REG_SRC_MEMORY when is_load else REG_SRC_ALU;
 	alu_src <= ALU_SRC_IMMEDIATE when is_i_type and not is_branch else ALU_SRC_REGISTER;
 
 	-- Set register addresses
 	read_reg_1_out <= rs;
-	read_reg_2_out <= rt;
+	read_reg_2_out <= "00000" when is_i_type else rt; -- Prevent forwarding
 	write_reg <= rt when is_i_type else rd;
 
 	-- ALU function selection
@@ -173,5 +170,7 @@ begin
 	reg_write_out <= wb_reg_write;
 	mem_write_out <= mem_mem_write;
 	reg_src_out <= ex_reg_src;
+	fwd_write_reg_out <= mem_write_reg;
+	fwd_reg_write_out <= mem_reg_write;
 
 end Behavioral;
