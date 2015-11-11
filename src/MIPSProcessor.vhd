@@ -33,9 +33,10 @@ architecture Behavioral of MIPSProcessor is
 
 	signal alu_1, alu_2, fwd_alu_1, fwd_alu_2, alu_result : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal alu_control : alu_operation_t;
-	signal alu_zero, reg_write, fwd_reg_write, jump, branch, pc_write, mem_write : boolean;
-	signal reg_src : reg_src_t;
-	signal alu_shamt, read_reg_1, read_reg_2, write_reg, fwd_write_reg : std_logic_vector(4 downto 0);
+	signal alu_zero, reg_write, fwd_reg_write, jump, branch,
+		pc_write, mem_write, hd_jump, hd_reg_write, noop, stall : boolean;
+	signal reg_src, hd_reg_src : reg_src_t;
+	signal alu_shamt, read_reg_1, read_reg_2, write_reg, fwd_write_reg, hd_write_reg : std_logic_vector(4 downto 0);
 	signal alu_src : alu_src_t;
 
 begin
@@ -70,8 +71,8 @@ begin
 		
 	control : entity work.Control port map (
 			clk => clk,
-			noop_in => false, --TODO
-			stall_in => false, --TODO
+			noop_in => noop,
+			stall_in => stall,
 			reset => reset,
 			enable => processor_enable,
 			instruction_in => imem_data_in,
@@ -86,7 +87,11 @@ begin
 			reg_write_out => reg_write,
 			alu_src_out => alu_src,
 			reg_src_out => reg_src,
-			mem_write_out => mem_write
+			mem_write_out => mem_write,
+			hd_jump_out => hd_jump,
+			hd_write_reg_out => hd_write_reg,
+			hd_reg_write_out => hd_reg_write,
+			hd_reg_src_out => hd_reg_src
 		);
 
 	alu : entity work.ALU port map (
@@ -121,6 +126,18 @@ begin
 			read_data_in => dmem_data_in,
 			alu_out => alu_2
 		);
+		
+	hazard_detection: entity work.HazardDetection port map (
+		if_id_read_reg_1_in => read_reg_1,
+		if_id_read_reg_2_in => read_reg_2,
+		id_ex_write_reg_in => hd_write_reg,
+		id_ex_reg_src_in => hd_reg_src,
+		id_ex_reg_write_in => hd_reg_write,
+		id_ex_branch_in => branch,
+		id_ex_jump_in => hd_jump,
+		stall_out => stall,
+		noop_out => noop
+	);
 
 	dmem_address <= alu_result(ADDR_WIDTH-1 downto 0);
 	dmem_write_enable <= '1' when mem_write else '0';

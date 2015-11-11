@@ -16,9 +16,10 @@ entity Control is
 			instruction_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 			alu_control_out : out alu_operation_t;
 			alu_shamt_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
-			read_reg_1_out, read_reg_2_out, write_reg_out, fwd_write_reg_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
-			pc_write_out, branch_out, jump_out, reg_write_out, fwd_reg_write_out, mem_write_out : out boolean;
-			reg_src_out : out reg_src_t;
+			read_reg_1_out, read_reg_2_out, write_reg_out, fwd_write_reg_out, hd_write_reg_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
+			pc_write_out, branch_out, jump_out, reg_write_out, fwd_reg_write_out,
+				hd_reg_write_out, mem_write_out, hd_jump_out : out boolean;
+			reg_src_out, hd_reg_src_out : out reg_src_t;
 			alu_src_out : out alu_src_t
 	);
 
@@ -102,8 +103,8 @@ begin
 
 		elsif rising_edge(clk) then
 			-- ID/EX
-			ex_branch <= is_branch;
-			ex_jump <= is_j_type;
+			ex_branch <= is_branch and not is_noop;
+			ex_jump <= is_j_type and not is_noop;
 			ex_reg_write <= (not is_noop and
 				not is_jump and
 				not is_branch and
@@ -166,11 +167,17 @@ begin
 	alu_shamt_out <= ex_alu_shamt;
 	write_reg_out <= wb_write_reg;
 	branch_out <= ex_branch;
-	jump_out <= ex_jump;
+	jump_out <= is_j_type and not is_noop;
 	reg_write_out <= wb_reg_write;
 	mem_write_out <= mem_mem_write;
-	reg_src_out <= ex_reg_src;
+	reg_src_out <= wb_reg_src;
 	fwd_write_reg_out <= mem_write_reg;
 	fwd_reg_write_out <= mem_reg_write;
+	hd_reg_write_out <= ex_reg_write;
+	hd_write_reg_out <= ex_write_reg;
+	hd_reg_src_out <= ex_reg_src;
+	hd_jump_out <= ex_jump;
+	
+	
 
 end Behavioral;
