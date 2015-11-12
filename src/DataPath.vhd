@@ -72,8 +72,19 @@ begin
 			ex_mem_alu_result <= (others => '0');
 			mem_wb_alu_result <= (others => '0');
 		elsif rising_edge(clk) then
-			id_ex_alu_1 <= register_file(to_integer(unsigned(read_reg_1_in)));
-			id_ex_alu_2 <= register_file(to_integer(unsigned(read_reg_2_in)));
+			-- Bypass register file for values provided this cycle
+			if reg_write_in and write_reg_in = read_reg_1_in then
+				id_ex_alu_1 <= reg_write_data;
+			else
+				id_ex_alu_1 <= register_file(to_integer(unsigned(read_reg_1_in)));
+			end if;
+			
+			if reg_write_in and write_reg_in = read_reg_2_in then
+				id_ex_alu_2 <= reg_write_data;
+			else
+				id_ex_alu_2 <= register_file(to_integer(unsigned(read_reg_2_in)));
+			end if;
+			
 			id_ex_immediate <= std_logic_vector(resize(signed(immediate_in), DATA_WIDTH));
 			ex_mem_write_data <= id_ex_alu_2;
 			ex_mem_alu_result <= alu_result_in;
