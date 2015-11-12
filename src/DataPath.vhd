@@ -16,13 +16,15 @@ entity DataPath is
 		immediate_in : in std_logic_vector(IMMEDIATE_WIDTH-1 downto 0);
 		read_data_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 		alu_result_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
+		fwd_write_data : in std_logic_vector(DATA_WIDTH-1 downto 0);
 		-- Control signals
 		reg_write_in : in boolean;
 		alu_src_in : in alu_src_t;
 		reg_src_in : in reg_src_t;
 		alu_1_out, alu_2_out : out std_logic_vector(DATA_WIDTH-1 downto 0);  
 		mem_addr_out : out std_logic_vector(DATA_WIDTH-1 downto 0);
-		write_data_out : out std_logic_vector(DATA_WIDTH-1 downto 0)
+		write_data_out : out std_logic_vector(DATA_WIDTH-1 downto 0);
+		fwd_reg_2_data: out std_logic_vector(DATA_WIDTH-1 downto 0)
 	);
 end DataPath;
 
@@ -86,12 +88,14 @@ begin
 			end if;
 			
 			id_ex_immediate <= std_logic_vector(resize(signed(immediate_in), DATA_WIDTH));
-			ex_mem_write_data <= id_ex_alu_2;
+			ex_mem_write_data <= fwd_write_data;
 			ex_mem_alu_result <= alu_result_in;
 			mem_wb_alu_result <= ex_mem_alu_result;
 		end if;
 	end process;
-	
+
+	fwd_reg_2_data <= id_ex_alu_2;
+
 	
 	-- Data writeback
 	with reg_src_in select reg_write_data <=
@@ -99,13 +103,13 @@ begin
 		mem_wb_alu_result when REG_SRC_ALU;
 
 	-- Outputs for memory
-	write_data_out <= ex_mem_write_data;
+	write_data_out <= ex_mem_write_data; --TODO: Forwarding!
 	mem_addr_out <= ex_mem_alu_result;
 	
 	-- Outputs for ALU
 	alu_1_out <= id_ex_alu_1;
 	with alu_src_in select alu_2_out <=
-		id_ex_alu_2 when ALU_SRC_REGISTER,
+		fwd_write_data when ALU_SRC_REGISTER,
 		id_ex_immediate when ALU_SRC_IMMEDIATE;
 	
 

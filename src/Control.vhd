@@ -145,7 +145,7 @@ begin
 
 	-- Set register addresses
 	read_reg_1_out <= rs;
-	read_reg_2_out <= "00000" when is_i_type else rt; -- Prevent forwarding
+	read_reg_2_out <= rt;
 	write_reg <= rt when is_i_type else rd;
 
 	-- ALU function selection
