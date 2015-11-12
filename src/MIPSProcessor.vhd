@@ -31,7 +31,7 @@ end MIPSProcessor;
 
 architecture Behavioral of MIPSProcessor is
 
-	signal alu_1, alu_2, fwd_alu_1, fwd_alu_2, alu_result, mem_addr : std_logic_vector(DATA_WIDTH-1 downto 0);
+	signal alu_1, alu_2, fwd_alu_1, fwd_alu_2, alu_result, mem_addr, instruction : std_logic_vector(DATA_WIDTH-1 downto 0);
 	signal alu_control : alu_operation_t;
 	signal alu_zero, reg_write, fwd_reg_write, jump, branch,
 		pc_write, mem_write, hd_jump, hd_reg_write, noop, stall : boolean;
@@ -40,6 +40,13 @@ architecture Behavioral of MIPSProcessor is
 	signal alu_src : alu_src_t;
 
 begin
+
+	delayer: entity work.DataDelayer port map (
+			clk => clk,
+			data_in => imem_data_in,
+			data_out => instruction,
+			delay => stall
+		);
 	
 	data_path : entity work.DataPath port map (
 			clk => clk,
@@ -47,7 +54,7 @@ begin
 			read_reg_1_in => read_reg_1,
 			read_reg_2_in => read_reg_2,
 			write_reg_in => write_reg,
-			immediate_in => imem_data_in(15 downto 0),
+			immediate_in => instruction(15 downto 0),
 			read_data_in => dmem_data_in,
 			alu_result_in => alu_result,
 			reg_write_in => reg_write,
@@ -67,7 +74,7 @@ begin
 			branch_in => branch,
 			jump_in => jump,
 			pc_write_in => pc_write,
-			instruction_in => imem_data_in
+			instruction_in => instruction
 		);
 		
 	control : entity work.Control port map (
@@ -76,7 +83,7 @@ begin
 			stall_in => stall,
 			reset => reset,
 			enable => processor_enable,
-			instruction_in => imem_data_in,
+			instruction_in => instruction,
 			alu_control_out => alu_control,
 			alu_shamt_out => alu_shamt,
 			read_reg_1_out => read_reg_1,
