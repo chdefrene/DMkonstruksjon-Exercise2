@@ -35,9 +35,6 @@ begin
 
 			-- Fetch => decode
 			branch_base <= next_pc;
-			jump_target <= next_pc(DATA_WIDTH - 1 downto DATA_WIDTH - 6) &
-						unsigned(instruction_in(DATA_WIDTH - 7 downto 0));
-
 
 			-- Decode => Execute
 			branch_target <= branch_base + unsigned(
@@ -45,14 +42,13 @@ begin
 				);
 
 			-- * => Fetch
-			if pc_write_in then
-				if jump_in then
-					pc <= jump_target;
-				elsif branch_in and alu_zero_in then
-					pc <= branch_target;
-				else
-					pc <= next_pc;
-				end if;
+			if jump_in then
+				pc <= branch_base(DATA_WIDTH - 1 downto DATA_WIDTH - 6) &
+					unsigned(instruction_in(DATA_WIDTH - 7 downto 0));
+			elsif branch_in and alu_zero_in then
+				pc <= branch_target;
+			elsif pc_write_in then
+				pc <= next_pc;
 			end if;
 
 		end if;
