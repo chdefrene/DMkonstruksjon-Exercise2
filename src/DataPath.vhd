@@ -17,6 +17,7 @@ entity DataPath is
 		read_data_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 		alu_result_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 		fwd_write_data : in std_logic_vector(DATA_WIDTH-1 downto 0);
+		fwd_write_data_out : out std_logic_vector(DATA_WIDTH-1 downto 0);
 		-- Control signals
 		reg_write_in : in boolean;
 		alu_src_in : in alu_src_t;
@@ -101,6 +102,8 @@ begin
 	with reg_src_in select reg_write_data <=
 		read_data_in when REG_SRC_MEMORY,
 		mem_wb_alu_result when REG_SRC_ALU;
+
+	fwd_write_data_out <= reg_write_data;
 
 	-- Outputs for memory
 	write_data_out <= ex_mem_write_data; --TODO: Forwarding!
