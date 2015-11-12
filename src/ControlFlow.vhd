@@ -45,12 +45,14 @@ begin
 				);
 
 			-- * => Fetch
-			if jump_in then
-				pc <= jump_target;
-			elsif branch_in and alu_zero_in then
-				pc <= branch_target;
-			elsif pc_write_in then
-				pc <= next_pc;
+			if pc_write_in then
+				if jump_in then
+					pc <= jump_target;
+				elsif branch_in and alu_zero_in then
+					pc <= branch_target;
+				else
+					pc <= next_pc;
+				end if;
 			end if;
 
 		end if;
