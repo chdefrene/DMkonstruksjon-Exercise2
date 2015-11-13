@@ -81,29 +81,19 @@ BEGIN
 
 
 		-- No change on pc_write = 0
-		for i in 0 to 8 loop
-			if (i mod 2) = 0 then
-				branch_in <= false;
-			else
-				branch_in <= true;
-			end if;
+		for i in 0 to 4 loop
 
-			if ((i/2) mod 2) = 0 then
+			if (i mod 2) = 0 then
 				alu_zero_in <= false;
 			else
 				alu_zero_in <= true;
 			end if;
-
-			if ((i/4) mod 2) = 0 then
-				jump_in <= false;
-			else
-				jump_in <= true;
-			end if;
-
+			
 			wait for clk_period;
 			assert pc_out = x"00000000"
 				report "pc_out should not change without pc_write = 1"
 				severity failure;
+
 		end loop;
 
 		---- Start doing something interesting ----
@@ -115,44 +105,51 @@ BEGIN
 			wait for clk_period;
 
 			assert to_integer(unsigned(pc_out)) = i
-				report "pc_out should increment by 1 each clock cycle when pc_write = true"
+				report "pc_out should increment by 1 each clock cycle when pc_write = true" 
 				severity failure;
 		end loop;
 
 		-- Can do branching forward
-		branch_in <= true;
-		alu_zero_in <= true;
 		instruction_in <= x"0000000F"; -- Immediate: 15
 		wait for clk_period;
+		branch_in <= true;
+		alu_zero_in <= true;
+		
+		wait for clk_period;
+		branch_in <= false;
+		wait for clk_period;
 		assert to_integer(unsigned(pc_out)) = 26
-			report "Does not branch on branch = true and zero = true"
+			report "Does not branch forward properly"
 			severity failure;
 
 		-- Can do branching backwards
 		instruction_in <= x"0000FFF1"; -- Immediate: -15
 		wait for clk_period;
-		assert to_integer(unsigned(pc_out)) = 12
+		branch_in <= true;
+		wait for clk_period;
+		assert to_integer(unsigned(pc_out)) = 11
 			report "Does not branch backwards properly"
 			severity failure;
 
 		-- Branching with immediate = 0
-		instruction_in <= x"00000000";
 		wait for clk_period;
-		assert to_integer(unsigned(pc_out)) = 13
-			report "Not handeling branch with immediate = 0"
+		instruction_in <= x"00000000";
+		wait for clk_period*2;
+		assert to_integer(unsigned(pc_out)) = 12
+			report "Not handling branch with immediate = 0"
 			severity failure;
 
 		-- Branch should only use the last 16 bits
 		instruction_in <= x"FFFF0000";
 		wait for clk_period;
-		assert to_integer(unsigned(pc_out)) = 14
+		assert to_integer(unsigned(pc_out)) = 13
 			report "Too much of the instruction used as immediate"
 			severity failure;
 
 		-- Not branching when zero = 1
 		alu_zero_in <= false;
 		wait for clk_period;
-		assert to_integer(unsigned(pc_out)) = 15
+		assert to_integer(unsigned(pc_out)) = 14
 			report "Branching even when zero = false"
 			severity failure;
 
@@ -160,7 +157,7 @@ BEGIN
 		alu_zero_in <= true;
 		branch_in <= false;
 		wait for clk_period;
-		assert to_integer(unsigned(pc_out)) = 16
+		assert to_integer(unsigned(pc_out)) = 15
 			report "Branching even when branch = false"
 			severity failure;
 
@@ -195,7 +192,7 @@ BEGIN
 		end loop;
 
 
-		report "Test success!";
+		report "All tests passed!";
 		wait;
 
 	end process;
