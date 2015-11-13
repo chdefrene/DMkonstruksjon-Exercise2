@@ -14,45 +14,45 @@ ARCHITECTURE behavior OF tb_ControlFlow IS
 			  ADDR_WIDTH : integer := 32
 		 );
 	 PORT(
-			clk : IN  std_logic;
-			reset : IN	std_logic;
-			pc_out : OUT  std_logic_vector(31 downto 0);
-			alu_zero_in : IN	boolean;
-			branch_in : IN  boolean;
-			jump_in : IN  boolean;
-			pc_write_in : IN	boolean;
-			instruction_in : IN	std_logic_vector(31 downto 0)
+			clk 			: IN	std_logic;
+			reset 			: IN 	std_logic;
+			pc_out 			: OUT	std_logic_vector(31 downto 0);
+			alu_zero_in 	: IN	boolean;
+			branch_in		: IN  	boolean;
+			jump_in 		: IN  	boolean;
+			pc_write_in 	: IN	boolean;
+			instruction_in 	: IN	std_logic_vector(31 downto 0)
 		  );
 
 	 END COMPONENT;
 
 
 	--Inputs
-	signal clk : std_logic := '0';
-	signal reset : std_logic := '0';
-	signal alu_zero_in : boolean := false;
-	signal branch_in : boolean := false;
-	signal jump_in : boolean := false;
-	signal pc_write_in : boolean := false;
-	signal instruction_in : std_logic_vector(31 downto 0) := x"00000000";
+	signal clk 				: std_logic 					:= '0';
+	signal reset 			: std_logic 					:= '0';
+	signal alu_zero_in 		: boolean 						:= false;
+	signal branch_in 		: boolean 						:= false;
+	signal jump_in 			: boolean 						:= false;
+	signal pc_write_in 		: boolean 						:= false;
+	signal instruction_in 	: std_logic_vector(31 downto 0) := x"00000000";
 
 	--Outputs
-	signal pc_out : std_logic_vector(31 downto 0);
+	signal pc_out 			: std_logic_vector(31 downto 0);
 
 	-- Clock period definitions
-	constant clk_period : time := 10 ns;
+	constant clk_period 	: time := 10 ns;
 
 BEGIN
 
 	-- Instantiate the Unit Under Test (UUT)
 	uut: ControlFlow PORT MAP (
-			 clk => clk,
-			 reset => reset,
-			 pc_out => pc_out,
-			 alu_zero_in => alu_zero_in,
-			 branch_in => branch_in,
-			 jump_in => jump_in,
-			 pc_write_in => pc_write_in,
+			 clk 			=> clk,
+			 reset 			=> reset,
+			 pc_out		 	=> pc_out,
+			 alu_zero_in 	=> alu_zero_in,
+			 branch_in 		=> branch_in,
+			 jump_in 		=> jump_in,
+			 pc_write_in 	=> pc_write_in,
 			 instruction_in => instruction_in
 		  );
 
