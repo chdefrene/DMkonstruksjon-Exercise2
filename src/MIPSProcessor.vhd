@@ -146,7 +146,6 @@ begin
 		id_ex_reg_src_in => hd_reg_src,
 		id_ex_reg_write_in => hd_reg_write,
 		id_ex_branch_in => branch,
-		id_ex_jump_in => hd_jump,
 		stall_out => stall
 	);
 
