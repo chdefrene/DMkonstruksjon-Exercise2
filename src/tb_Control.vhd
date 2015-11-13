@@ -23,7 +23,7 @@ ARCHITECTURE behavior OF tb_Control IS
 		);
 		port (
 			clk, reset, enable : in std_logic;
-			noop_in, stall_in : in boolean;
+			stall_in : in boolean;
 			instruction_in : in std_logic_vector(DATA_WIDTH-1 downto 0);
 			alu_control_out : out alu_operation_t;
 			alu_shamt_out : out std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
@@ -38,7 +38,6 @@ ARCHITECTURE behavior OF tb_Control IS
 	signal clk : std_logic := '0';
 	signal reset : std_logic := '0';
 	signal enable : std_logic := '1';
-	signal noop_in : boolean := false;
 	signal stall_in : boolean := false;
 	signal instruction_in : std_logic_vector(DATA_WIDTH-1 downto 0) := (others => '0');
 	
@@ -103,7 +102,6 @@ BEGIN
 		clk => clk,
 		reset => reset,
 		enable => enable,
-		noop_in => noop_in,
 		stall_in => stall_in,
 		instruction_in => instruction_in,
 		alu_control_out => alu_control_out,

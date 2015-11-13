@@ -16,8 +16,8 @@ ARCHITECTURE behavior OF tb_HazardDetection IS
     PORT(
 			if_id_read_reg_1_in, if_id_read_reg_2_in, id_ex_write_reg_in : in std_logic_vector(4 downto 0);
 			id_ex_reg_src_in : in reg_src_t;
-			id_ex_reg_write_in, id_ex_branch_in, id_ex_jump_in : in boolean;
-			stall_out, noop_out : out boolean
+			id_ex_reg_write_in, id_ex_branch_in : in boolean;
+			stall_out : out boolean
         );
     END COMPONENT;
     
@@ -33,7 +33,6 @@ ARCHITECTURE behavior OF tb_HazardDetection IS
 
  	--Outputs
    signal stall_out : boolean;
-   signal noop_out : boolean;
  
    constant clk_period : time := 10 ns;
  
@@ -47,9 +46,7 @@ BEGIN
           id_ex_reg_src_in => id_ex_reg_src_in,
           id_ex_reg_write_in => id_ex_reg_write_in,
           id_ex_branch_in => id_ex_branch_in,
-          id_ex_jump_in => id_ex_jump_in,
-          stall_out => stall_out,
-          noop_out => noop_out
+          stall_out => stall_out
         );
 
  
@@ -60,48 +57,34 @@ BEGIN
       wait for clk_period*10;
 		
 		-- Should not stall without branch, load or jump
-		assert not stall_out and not noop_out
-			report "Stalling or nooping to much!"
+		assert not stall_out
+			report "Stalling to much!"
 			severity failure;
 		
 		if_id_read_reg_1_in <= "10101";
 		id_ex_write_reg_in <= "10101";
 		
-		assert not stall_out and not noop_out
-			report "Stalling or nooping too much!"
+		assert not stall_out
+			report "Stalling too much!"
 			severity failure;
 			
 		if_id_read_reg_2_in <= "10101";
 		id_ex_write_reg_in <= "10101";
 		
-		assert not stall_out and not noop_out
-			report "Stalling or nooping to much!"
+		assert not stall_out
+			report "Stalling to much!"
 			severity failure;
 			
 		if_id_read_reg_2_in <= "00000";
 		if_id_read_reg_1_in <= "00000";
 		id_ex_write_reg_in <= "00000";
-
-      -- Always do a noop on jump
-		id_ex_jump_in <= true;
-		wait for clk_period;
-		
-		assert noop_out
-			report "Should noop on jump to skip fetched instruction!"
-			severity failure;
-			
-		assert not stall_out
-			report "Should not stall on jump"
-			severity failure;
-			
-		id_ex_jump_in <= false;
 		
 		-- Branch should stall pipeline
 		id_ex_branch_in <= true;
 		wait for clk_period;
 
-		assert noop_out and stall_out
-			report "Should stall (and also noop) on branch"
+		assert stall_out
+			report "Should stall on branch"
 			severity failure;
 
 		id_ex_branch_in <= false;
@@ -113,19 +96,19 @@ BEGIN
 		
 		if_id_read_reg_1_in <= "01010";
 		wait for clk_period;
-		assert noop_out and stall_out
+		assert stall_out
 			report "Should stall when reg_1 depends on load"
 			severity failure;
 			
 		if_id_read_reg_2_in <= "01010";
 		wait for clk_period;
-		assert noop_out and stall_out
+		assert stall_out
 			report "Should stall when reg_2 and reg_1 depends on load"
 			severity failure;
 		
 		if_id_read_reg_1_in <= "00000";
 		wait for clk_period;
-		assert noop_out and stall_out
+		assert stall_out
 			report "Should stall when reg_2 depends on load"
 			severity failure;
 			
