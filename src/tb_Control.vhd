@@ -214,6 +214,11 @@ BEGIN
 			-- R-Type
 			if opcode = "000000" then
 			
+				-- Branch 
+				assert branch_out = false
+					report "EX stage, R-Type: branch_out should be '0'"
+					severity failure;
+					
 				-- Jump 
 				assert jump_out = false
 					report "EX stage, R-Type: jump out should be '0'"
@@ -234,12 +239,23 @@ BEGIN
 
 			-- Jump 
 			elsif opcode(5 downto 1) = "0001" then
+				-- Branch 
+				assert branch_out = false
+					report "EX stage, J: branch_out should be '0'"
+					severity failure;
+			
+				-- Jump
 				assert jump_out = true
 					report "EX stage, J: jump out should be '1'"
 					severity failure;
 
 			-- BEQ
 			elsif opcode(5 downto 2) = "001" then
+			
+				-- Branch 
+				assert branch_out = true
+					report "EX stage, BEQ: branch_out should be '1'"
+					severity failure;
 			
 				-- Jump 
 				assert jump_out = false
@@ -259,6 +275,11 @@ BEGIN
 					
 			-- I-Type
 			elsif opcode(5 downto 3) = "01" then
+				
+				-- Branch 
+				assert branch_out = false
+					report "EX stage, I-type: branch_out should be '0'"
+					severity failure;
 			
 				-- Jump 
 				assert jump_out = false
@@ -283,7 +304,11 @@ BEGIN
 
 			-- LW
 			elsif opcode = "100011" then
-			
+				-- Branch 
+				assert branch_out = false
+					report "EX stage, LW: branch_out should be '0'"
+					severity failure;
+					
 				-- Jump 
 				assert jump_out = false
 					report "EX stage, LW: jump out should be '0'"
@@ -302,7 +327,11 @@ BEGIN
 
 			-- SW
 			elsif opcode = "101011" then
-				
+				-- Branch 
+				assert branch_out = false
+					report "EX stage, SW: branch_out should be '0'"
+					severity failure;
+					
 				-- Jump 
 				assert jump_out = false
 					report "EX stage, SW: jump out should be '0'"
@@ -333,11 +362,7 @@ BEGIN
 
 			-- Pipeline is not yet filled
 			if instruction = INSTR_NONE then
-				-- Branch 
-				assert branch_out = false
-					report "MEM stage, No instruction: branch_out should be '0'"
-					severity failure;
-				
+
 				-- Mem Write
 				assert mem_write_out = false
 					report "MEM stage, No instruction: mem_write_out should be '0'"
@@ -345,11 +370,6 @@ BEGIN
 
 			-- R-Type
 			elsif opcode = "000000" then
-			
-				-- Branch 
-				assert branch_out = false
-					report "MEM stage, R-Type: branch_out should be '0'"
-					severity failure;
 				
 				-- Mem Write
 				assert mem_write_out = false
@@ -358,15 +378,14 @@ BEGIN
 
 			-- Jump 
 			elsif opcode(5 downto 1) = "0001" then
-				
+				-- Mem Write				
+				assert mem_write_out = false
+					report "MEM stage, J: mem_write_out should be '0'"
+					severity failure;
+					
 			-- BEQ
 			elsif opcode(5 downto 2) = "001" then
 					
-				-- Branch
-				assert branch_out = true
-					report "MEM stage, BEQ: branch_out should be '1'"
-					severity failure; 
-				
 				-- Mem Write				
 				assert mem_write_out = false
 					report "MEM stage, BEQ: mem_write_out should be '0'"
@@ -376,10 +395,6 @@ BEGIN
 			-- I-Type
 			elsif opcode(5 downto 3) = "01" then
 
-				-- Branch 
-				assert branch_out = false
-					report "MEM stage, I-Type: branch_out should be '0'"
-					severity failure;
 				
 				-- Mem Write
 				assert mem_write_out = false
@@ -390,11 +405,6 @@ BEGIN
 			-- LW
 			elsif opcode = "100011" then
 				
-				-- Branch 
-				assert branch_out = false
-					report "MEM stage, LW: branch_out should be '0'"
-					severity failure;
-				
 				-- Mem Write
 				assert mem_write_out = false
 					report "MEM stage, LW: mem_write_out should be '0'"
@@ -402,11 +412,6 @@ BEGIN
 
 			-- SW
 			elsif opcode = "101011" then
-				
-				-- Branch 
-				assert branch_out = false
-					report "MEM stage, SW: branch_out should be '0'"
-					severity failure;
 				
 				-- Mem Write
 				assert mem_write_out = true
@@ -528,15 +533,17 @@ BEGIN
 			(instruction : std_logic_vector(DATA_WIDTH-1 downto 0)) is
 		begin
 			instruction_in <= instruction;
+			tb_writeback_instruction <= tb_mem_instruction;
+			tb_mem_instruction <= tb_execute_instruction;
+			tb_execute_instruction <= instruction;
+			wait for clk_period;
 			AssertDecodeStage;
 			AssertExecutestage(tb_execute_instruction);
 			AssertMemStage(tb_mem_instruction);
 			AssertWriteBackStage(tb_writeback_instruction);
 			
-			tb_writeback_instruction <= tb_mem_instruction;
-			tb_mem_instruction <= tb_execute_instruction;
-			tb_execute_instruction <= instruction;
-	
+
+			
 		end InsertInstruction;
 
 
@@ -552,7 +559,7 @@ BEGIN
 		enable <= '0';
 
 		-- Set some instruction as input
-		instruction_in <= INSTR_SW;
+		--instruction_in <= INSTR_SW;
 
 		-- Wait a couple of clock cycles
 		wait for clk_period*10;
@@ -560,6 +567,8 @@ BEGIN
 		-- Enable the processor again
 		enable <= '1';
 		
+		-- Wait one cycle to simulate instruction being fetched from memory
+		wait for clk_period;
 		
 
 		-- Insert instructions
